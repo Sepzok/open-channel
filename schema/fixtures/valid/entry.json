@@ -1,0 +1,19 @@
+{
+  "id": "en_draft_ann",
+  "channel_id": "ch_draft",
+  "type": "annotation",
+  "body": [
+    {
+      "id": "blk_ann",
+      "type": "text",
+      "text": "这里的容器包括会话、任务和笔记。",
+      "format": "plain"
+    }
+  ],
+  "parent_id": null,
+  "anchor": { "block_id": "blk_draft_lead", "quote": "可寻址的容器" },
+  "author": { "id": "u_zhou", "display_name": "周宁" },
+  "created_at": "2026-01-01T00:00:00.000Z",
+  "updated_at": "2026-01-01T00:00:00.000Z",
+  "deleted_at": null
+}

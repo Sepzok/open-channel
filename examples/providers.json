@@ -1,0 +1,5 @@
+[
+  { "id": "chat", "name": "示例会话", "baseUrl": "http://127.0.0.1:8781", "token": "demo-token" },
+  { "id": "tasks", "name": "示例任务", "baseUrl": "http://127.0.0.1:8782", "token": "demo-token" },
+  { "id": "notes", "name": "示例笔记", "baseUrl": "http://127.0.0.1:8783", "token": "demo-token" }
+]

@@ -1,0 +1,88 @@
+{
+  "files": [
+    {
+      "id": "file_terms",
+      "name": "术语.txt",
+      "media_type": "text/plain",
+      "text": "频道\n讨论\n链接\n"
+    }
+  ],
+  "channels": [
+    {
+      "id": "ch_draft",
+      "type": "note",
+      "title": "接口草案",
+      "members": [
+        { "id": "u_lin", "display_name": "林可", "role": "owner" }
+      ],
+      "body": [
+        {
+          "id": "blk_draft_lead",
+          "type": "text",
+          "text": "频道是可寻址的容器，讨论附在频道上。",
+          "format": "plain"
+        }
+      ]
+    },
+    {
+      "id": "ch_glossary",
+      "type": "note",
+      "title": "术语表",
+      "members": [
+        { "id": "u_lin", "display_name": "林可", "role": "owner" }
+      ],
+      "body": [
+        {
+          "id": "blk_gloss",
+          "type": "text",
+          "text": "频道、讨论、链接是三条基本记录。",
+          "format": "plain"
+        },
+        {
+          "id": "blk_gloss_file",
+          "type": "file",
+          "file": { "id": "file_terms", "name": "术语.txt", "media_type": "text/plain", "size": 0 }
+        }
+      ]
+    }
+  ],
+  "edits": [
+    {
+      "channel_id": "ch_draft",
+      "author": { "id": "u_lin", "display_name": "林可" },
+      "body": [
+        {
+          "id": "blk_draft_lead",
+          "type": "text",
+          "text": "频道是可寻址的容器，讨论附在频道上。",
+          "format": "plain"
+        },
+        {
+          "id": "blk_draft_more",
+          "type": "text",
+          "text": "链接把相关频道连起来，分享给出外部可打开的地址。",
+          "format": "plain"
+        }
+      ]
+    }
+  ],
+  "entries": [
+    {
+      "id": "en_draft_ann",
+      "channel_id": "ch_draft",
+      "type": "annotation",
+      "anchor": { "block_id": "blk_draft_lead", "quote": "可寻址的容器" },
+      "author": { "id": "u_zhou", "display_name": "周宁" },
+      "body": [{ "id": "blk_ann", "type": "text", "text": "这里的容器包括会话、任务和笔记。", "format": "plain" }]
+    }
+  ],
+  "links": [
+    {
+      "id": "ln_draft_gloss",
+      "type": "references",
+      "source_id": "ch_draft",
+      "target_id": "ch_glossary",
+      "title": "术语表"
+    }
+  ]
+}

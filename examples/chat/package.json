@@ -1,0 +1,5 @@
+{
+  "name": "@open-channel/example-chat",
+  "private": true,
+  "type": "module"
+}

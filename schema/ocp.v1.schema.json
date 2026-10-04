@@ -1,0 +1,241 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-channel.local/schema/ocp.v1.schema.json",
+  "title": "Open Channel Protocol v1",
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^(ch|en|ln|sh|rev|file|blk)_[a-z0-9_]{1,40}$"
+    },
+    "actorId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,63}$"
+    },
+    "typeName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]{0,63}$"
+    },
+    "dateTime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "display_name"],
+      "properties": {
+        "id": { "$ref": "#/$defs/actorId" },
+        "display_name": { "type": "string", "minLength": 1, "maxLength": 80 }
+      }
+    },
+    "ext": {
+      "type": "object",
+      "maxProperties": 16,
+      "additionalProperties": { "type": "string", "maxLength": 256 },
+      "propertyNames": { "type": "string", "minLength": 1, "maxLength": 64 }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["body", "entries", "entry_threads", "links", "shares", "revisions"],
+      "properties": {
+        "body": { "type": "boolean" },
+        "entries": { "type": "boolean" },
+        "entry_threads": { "type": "boolean" },
+        "links": { "type": "boolean" },
+        "shares": { "type": "boolean" },
+        "revisions": { "type": "boolean" }
+      }
+    },
+    "member": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "display_name", "role"],
+      "properties": {
+        "id": { "$ref": "#/$defs/actorId" },
+        "display_name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "role": { "$ref": "#/$defs/typeName" }
+      }
+    },
+    "textBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "text", "format"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "type": { "const": "text" },
+        "text": { "type": "string", "minLength": 1, "maxLength": 100000 },
+        "format": { "enum": ["plain", "markdown"] }
+      }
+    },
+    "fileMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "media_type", "size"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "media_type": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "size": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "fileBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "file"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "type": { "const": "file" },
+        "file": { "$ref": "#/$defs/fileMeta" }
+      }
+    },
+    "embedBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "embed"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "type": { "const": "embed" },
+        "embed": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["url", "title"],
+          "properties": {
+            "url": { "type": "string", "pattern": "^https?://\\S+$" },
+            "title": { "type": "string", "minLength": 1, "maxLength": 200 }
+          }
+        }
+      }
+    },
+    "block": {
+      "oneOf": [
+        { "$ref": "#/$defs/textBlock" },
+        { "$ref": "#/$defs/fileBlock" },
+        { "$ref": "#/$defs/embedBlock" }
+      ]
+    },
+    "body": {
+      "type": "array",
+      "maxItems": 200,
+      "items": { "$ref": "#/$defs/block" }
+    },
+    "channel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "title",
+        "body",
+        "capabilities",
+        "members",
+        "created_at",
+        "updated_at",
+        "deleted_at",
+        "revision"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "type": { "$ref": "#/$defs/typeName" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "body": { "$ref": "#/$defs/body" },
+        "capabilities": { "$ref": "#/$defs/capabilities" },
+        "members": { "type": "array", "items": { "$ref": "#/$defs/member" } },
+        "ext": { "$ref": "#/$defs/ext" },
+        "created_at": { "$ref": "#/$defs/dateTime" },
+        "updated_at": { "$ref": "#/$defs/dateTime" },
+        "deleted_at": { "anyOf": [{ "$ref": "#/$defs/dateTime" }, { "type": "null" }] },
+        "revision": { "anyOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] }
+      }
+    },
+    "anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["block_id"],
+      "properties": {
+        "block_id": { "$ref": "#/$defs/id" },
+        "quote": { "type": "string", "minLength": 1, "maxLength": 500 }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "channel_id",
+        "type",
+        "body",
+        "parent_id",
+        "anchor",
+        "author",
+        "created_at",
+        "updated_at",
+        "deleted_at"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "channel_id": { "$ref": "#/$defs/id" },
+        "type": { "$ref": "#/$defs/typeName" },
+        "body": { "$ref": "#/$defs/body", "minItems": 1 },
+        "parent_id": { "anyOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] },
+        "anchor": { "anyOf": [{ "$ref": "#/$defs/anchor" }, { "type": "null" }] },
+        "author": { "$ref": "#/$defs/actor" },
+        "ext": { "$ref": "#/$defs/ext" },
+        "created_at": { "$ref": "#/$defs/dateTime" },
+        "updated_at": { "$ref": "#/$defs/dateTime" },
+        "deleted_at": { "anyOf": [{ "$ref": "#/$defs/dateTime" }, { "type": "null" }] }
+      }
+    },
+    "link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "source_id", "created_at", "deleted_at"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "type": { "$ref": "#/$defs/typeName" },
+        "source_id": { "$ref": "#/$defs/id" },
+        "target_id": { "$ref": "#/$defs/id" },
+        "target_url": { "type": "string", "pattern": "^https?://\\S+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "ext": { "$ref": "#/$defs/ext" },
+        "created_at": { "$ref": "#/$defs/dateTime" },
+        "deleted_at": { "anyOf": [{ "$ref": "#/$defs/dateTime" }, { "type": "null" }] }
+      },
+      "oneOf": [
+        {
+          "required": ["target_id"],
+          "not": { "required": ["target_url"] }
+        },
+        {
+          "required": ["target_url"],
+          "not": { "required": ["target_id"] }
+        }
+      ]
+    },
+    "problem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "title", "status", "code"],
+      "properties": {
+        "type": { "type": "string", "pattern": "^urn:ocp:problem:[a-z0-9-]+$" },
+        "title": { "type": "string", "minLength": 1 },
+        "status": { "type": "integer" },
+        "code": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+        "capability": { "type": "string" },
+        "current_revision": { "$ref": "#/$defs/id" },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "message"],
+            "properties": {
+              "path": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

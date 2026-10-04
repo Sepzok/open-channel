@@ -1,0 +1,69 @@
+{
+  "channels": [
+    {
+      "id": "ch_proj",
+      "type": "project",
+      "title": "官网改版",
+      "members": [
+        { "id": "u_lin", "display_name": "林可", "role": "owner" }
+      ],
+      "body": [
+        { "id": "blk_proj", "type": "text", "text": "对外官网的信息架构和首页。", "format": "plain" }
+      ]
+    },
+    {
+      "id": "ch_task_copy",
+      "type": "task",
+      "title": "首页文案",
+      "members": [
+        { "id": "u_lin", "display_name": "林可", "role": "owner" }
+      ],
+      "body": [
+        { "id": "blk_copy", "type": "text", "text": "按笔记里的口径写首页主标题和副标题。", "format": "plain" }
+      ]
+    },
+    {
+      "id": "ch_task_img",
+      "type": "task",
+      "title": "配图导出",
+      "members": [
+        { "id": "u_xu", "display_name": "许安", "role": "owner" }
+      ],
+      "body": [
+        { "id": "blk_img", "type": "text", "text": "导出首页用的三张图。", "format": "plain" }
+      ]
+    }
+  ],
+  "entries": [
+    {
+      "id": "en_copy_1",
+      "channel_id": "ch_task_copy",
+      "type": "comment",
+      "author": { "id": "u_zhou", "display_name": "周宁" },
+      "body": [{ "id": "blk_copy_c", "type": "text", "text": "主标题先用笔记里的那句。", "format": "plain" }]
+    }
+  ],
+  "links": [
+    {
+      "id": "ln_copy_parent",
+      "type": "parent",
+      "source_id": "ch_task_copy",
+      "target_id": "ch_proj",
+      "title": "所属项目"
+    },
+    {
+      "id": "ln_img_parent",
+      "type": "parent",
+      "source_id": "ch_task_img",
+      "target_id": "ch_proj",
+      "title": "所属项目"
+    },
+    {
+      "id": "ln_img_blocks",
+      "type": "blocks",
+      "source_id": "ch_task_img",
+      "target_id": "ch_task_copy",
+      "title": "配图未导出前，首页文案先不定稿"
+    }
+  ]
+}

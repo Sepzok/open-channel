@@ -1,0 +1,10 @@
+node_modules/
+data/
+**/store.json
+examples/**/files/
+e2e/_data_*/
+sdk/python/tests/_data_*/
+dist/
+*.log
+__pycache__/
+*.pyc

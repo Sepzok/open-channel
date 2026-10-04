@@ -1,0 +1,29 @@
+{
+  "name": "open-channel",
+  "private": true,
+  "workspaces": [
+    "sdk/typescript",
+    "server",
+    "examples/chat",
+    "examples/tasks",
+    "examples/notes",
+    "examples/console"
+  ],
+  "scripts": {
+    "test": "tsx --test test/**/*.test.ts server/test/**/*.test.ts sdk/typescript/test/**/*.test.ts examples/console/test/**/*.test.ts",
+    "test:python": "python3 -m unittest discover -s sdk/python/tests",
+    "test:e2e": "node e2e/console.mjs",
+    "dev:chat": "tsx examples/chat/index.ts",
+    "dev:tasks": "tsx examples/tasks/index.ts",
+    "dev:notes": "tsx examples/notes/index.ts",
+    "dev:console": "tsx examples/console/index.ts",
+    "dev": "node scripts/dev-all.mjs"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "playwright": "^1.49.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

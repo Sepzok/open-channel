@@ -1,0 +1,84 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import type { Block, Entry, Link, Seed, Store } from './types.js';
+import { createChannelRecord, updateChannelBody } from './store.js';
+import { genId, nowIso } from './util.js';
+
+export function importSeed(store: Store, seed: Seed): void {
+  const actor = store.options.actor;
+
+  for (const f of seed.files ?? []) {
+    const bytes = Buffer.from(f.text ?? '', 'utf8');
+    const meta = {
+      id: f.id,
+      name: f.name,
+      media_type: f.media_type,
+      size: bytes.length,
+    };
+    store.data.files[f.id] = meta;
+    fs.writeFileSync(path.join(store.filesDir, f.id), bytes);
+  }
+
+  for (const ch of seed.channels ?? []) {
+    const body = (ch.body ?? []) as Block[];
+    createChannelRecord(
+      store,
+      {
+        id: ch.id,
+        type: ch.type,
+        title: ch.title,
+        members: ch.members,
+        body,
+        ext: ch.ext,
+      },
+      actor,
+      true,
+    );
+  }
+
+  for (const edit of seed.edits ?? []) {
+    const ch = store.data.channels[edit.channel_id];
+    if (!ch) continue;
+    const author = edit.author ?? actor;
+    const body = store.syncFileBlocks(store.assignBlockIds(edit.body as Block[], true));
+    updateChannelBody(store, ch, undefined, body, author);
+  }
+
+  for (const en of seed.entries ?? []) {
+    const ch = store.data.channels[en.channel_id];
+    if (!ch) continue;
+    const ts = nowIso();
+    const body = store.syncFileBlocks(store.assignBlockIds(en.body as Block[], true));
+    const entry: Entry = {
+      id: en.id,
+      channel_id: en.channel_id,
+      type: en.type,
+      body,
+      parent_id: en.parent_id ?? null,
+      anchor: en.anchor ?? null,
+      author: en.author ?? actor,
+      ext: en.ext,
+      created_at: ts,
+      updated_at: ts,
+      deleted_at: null,
+    };
+    store.data.entries[entry.id] = entry;
+    ch.updated_at = ts;
+  }
+
+  for (const ln of seed.links ?? []) {
+    const ts = nowIso();
+    const link: Link = {
+      id: ln.id,
+      type: ln.type,
+      source_id: ln.source_id,
+      target_id: ln.target_id,
+      target_url: ln.target_url,
+      title: ln.title,
+      ext: ln.ext,
+      created_at: ts,
+      deleted_at: null,
+    };
+    store.data.links[link.id] = link;
+  }
+}

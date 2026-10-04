@@ -1,0 +1,71 @@
+{
+  "channels": [
+    {
+      "id": "ch_dm_lin_zhou",
+      "type": "dm",
+      "title": "林可、周宁",
+      "members": [
+        { "id": "u_lin", "display_name": "林可", "role": "member" },
+        { "id": "u_zhou", "display_name": "周宁", "role": "member" }
+      ]
+    },
+    {
+      "id": "ch_grp_release",
+      "type": "group",
+      "title": "发布小组",
+      "members": [
+        { "id": "u_lin", "display_name": "林可", "role": "owner" },
+        { "id": "u_zhou", "display_name": "周宁", "role": "member" },
+        { "id": "u_xu", "display_name": "许安", "role": "member" }
+      ]
+    },
+    {
+      "id": "ch_room_design",
+      "type": "room",
+      "title": "设计讨论",
+      "members": [
+        { "id": "u_xu", "display_name": "许安", "role": "owner" }
+      ]
+    }
+  ],
+  "entries": [
+    {
+      "id": "en_dm_1",
+      "channel_id": "ch_dm_lin_zhou",
+      "type": "message",
+      "author": { "id": "u_lin", "display_name": "林可" },
+      "body": [{ "id": "blk_dm_1", "type": "text", "text": "下午的稿子我放在笔记里了", "format": "plain" }]
+    },
+    {
+      "id": "en_dm_2",
+      "channel_id": "ch_dm_lin_zhou",
+      "type": "message",
+      "author": { "id": "u_zhou", "display_name": "周宁" },
+      "body": [{ "id": "blk_dm_2", "type": "text", "text": "我看完就在任务里标进度", "format": "plain" }]
+    },
+    {
+      "id": "en_grp_1",
+      "channel_id": "ch_grp_release",
+      "type": "message",
+      "author": { "id": "u_xu", "display_name": "许安" },
+      "body": [{ "id": "blk_grp_1", "type": "text", "text": "今天把配图导出", "format": "plain" }]
+    },
+    {
+      "id": "en_grp_2",
+      "channel_id": "ch_grp_release",
+      "type": "message",
+      "parent_id": "en_grp_1",
+      "author": { "id": "u_lin", "display_name": "林可" },
+      "body": [{ "id": "blk_grp_2", "type": "text", "text": "文案以笔记里的口径为准", "format": "plain" }]
+    }
+  ],
+  "links": [
+    {
+      "id": "ln_grp_room",
+      "type": "related",
+      "source_id": "ch_grp_release",
+      "target_id": "ch_room_design",
+      "title": "设计讨论"
+    }
+  ]
+}
