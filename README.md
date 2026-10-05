@@ -45,7 +45,7 @@ npm run test:e2e
 
 能力（`body`、`entries`、`entry_threads`、`links`、`shares`、`revisions`）写在发现文档与频道上；不支持的路由返回 `capability_unsupported`，不用空列表冒充。
 
-协议细节见 `docs/SPEC.md`，JSON Schema 见 `schema/ocp.v1.schema.json`。
+协议细节见 `docs/SPEC.md`，JSON Schema 见 `schema/ocp.v1.schema.json`。游戏房间可映射为频道；对局同步不走本协议，见 `docs/LIVE.md`。
 
 ## 包结构
 

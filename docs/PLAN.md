@@ -37,6 +37,7 @@
 ```
 docs/SPEC.md
 docs/PLAN.md
+docs/LIVE.md               大厅 HTTP 与对局进程的边界，不改 OCP 资源
 schema/ocp.v1.schema.json
 schema/fixtures/valid/*.json
 schema/fixtures/invalid/*.json
@@ -166,3 +167,5 @@ SDK 的 `resolveShare` 发送 `Accept: application/json`。
 ## 非目标
 
 联邦、WebSocket、表情回应、已读、OAuth、协同编辑、实时光标、npm 发布、公网部署。
+
+不把 OCP 改成对局同步：不平行再做一份低延迟版的频道、讨论、链接、修订；不把节拍、操作码、序号写进 `ocp.v1.schema.json`；不实现匹配池、区域目录、服务器舰队。大厅与对局的切法见 `docs/LIVE.md`。
