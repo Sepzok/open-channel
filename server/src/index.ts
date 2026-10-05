@@ -25,6 +25,7 @@ import {
   trimTitle,
   wantsShareJson,
 } from './util.js';
+import { signAdmission } from '@open-channel/match';
 import { sharePageHtml } from './html.js';
 import { parseListFilterQuery } from './scimFilter.js';
 import type { FileMeta } from './types.js';
@@ -56,6 +57,15 @@ import {
 type IdempotencyRecord = { hash: string; status: number; body: string };
 
 export function createApp(options: AppOptions): http.Server {
+  options.capabilities = {
+    body: options.capabilities.body,
+    entries: options.capabilities.entries,
+    entry_threads: options.capabilities.entry_threads,
+    links: options.capabilities.links,
+    shares: options.capabilities.shares,
+    revisions: options.capabilities.revisions,
+    live: options.capabilities.live === true,
+  };
   const store = new Store(options);
   const idempotency = new Map<string, IdempotencyRecord>();
   const maxFileBytes = options.maxFileBytes ?? 64 * 1024 * 1024;
@@ -1178,6 +1188,61 @@ export function createApp(options: AppOptions): http.Server {
           return link;
         });
         sendJson(res, 200, updated);
+        return;
+      }
+
+      const admitCreate = pathname.match(/^\/v1\/channels\/([^/]+)\/admissions$/);
+      if (admitCreate && method === 'POST') {
+        const ch = store.getChannel(admitCreate[1]!);
+        if (!requireVisible(res, identity, ch)) return;
+        if (!options.capabilities.live) {
+          sendProblem(res, 'capability_unsupported', { capability: 'live' });
+          return;
+        }
+        if (ch.deleted_at) {
+          sendProblem(res, 'deleted');
+          return;
+        }
+        if (!canSeeChannel(identity, ch)) {
+          sendProblem(res, 'forbidden');
+          return;
+        }
+        if (!options.liveUrl || !options.liveSecret) {
+          sendProblem(res, 'validation_error', {
+            errors: [{ path: 'live', message: 'liveUrl and liveSecret required' }],
+          });
+          return;
+        }
+        const raw = (await readBody(req)).toString('utf8');
+        if (raw.trim()) {
+          const parsed = parseJsonBody(raw);
+          if (!parsed.ok) {
+            sendProblem(res, 'validation_error');
+            return;
+          }
+          const unk = assertOnlyKeys(parsed.value as Record<string, unknown>, []);
+          if (unk) {
+            sendProblem(res, 'validation_error', { errors: [{ path: '', message: unk }] });
+            return;
+          }
+        }
+        const id = genId('ad');
+        const expiresAt = new Date(Date.now() + 60_000).toISOString();
+        const actor = identity.actor;
+        const token = signAdmission(options.liveSecret, {
+          id,
+          channelId: ch.id,
+          actorId: actor.id,
+          exp: expiresAt,
+        });
+        sendJson(res, 201, {
+          id,
+          token,
+          url: options.liveUrl,
+          expires_at: expiresAt,
+          channel_id: ch.id,
+          actor,
+        });
         return;
       }
 

@@ -210,6 +210,10 @@ class Client:
         _, data = self._request("DELETE", f"/v1/links/{link_id}")
         return data
 
+    def create_admission(self, channel_id: str) -> tuple[int, Any]:
+        status, data = self._request("POST", f"/v1/channels/{channel_id}/admissions", body={})
+        return status, data
+
     def create_share(self, channel_id: str, body: Mapping[str, Any], idempotency_key: Optional[str] = None) -> tuple[int, Any]:
         status, data = self._request(
             "POST", f"/v1/channels/{channel_id}/shares", body=dict(body), idempotency_key=idempotency_key

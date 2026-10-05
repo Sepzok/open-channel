@@ -1,0 +1,8 @@
+{
+  "id": "ad_demo1",
+  "token": "signed-admission-token-value",
+  "url": "udp://127.0.0.1:9100",
+  "expires_at": "2026-01-01T00:01:00.000Z",
+  "channel_id": "ch_walk",
+  "actor": { "id": "u_lin", "display_name": "林可" }
+}

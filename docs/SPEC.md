@@ -31,6 +31,7 @@
 - `links` 可以有链接
 - `shares` 可以创建分享
 - `revisions` 正文和标题的每次成功修改产生修订
+- `live` 可以签发对局入场凭证。缺省 false。不打开则 `POST .../admissions` 返回 `capability_unsupported`。凭证本身不含坐标、操作码或节拍
 
 v1 一个提供方的全部频道使用同一份能力。客户端不能在创建时打开提供方没有的能力。
 
@@ -42,7 +43,7 @@ v1 一个提供方的全部频道使用同一份能力。客户端不能在创�
 | `file` | `file`: `{ id, name, media_type, size }`。不含字节、不含下载 URL |
 | `embed` | `embed`: `{ url, title }`。`url` 须为绝对 `http` 或 `https` |
 
-资源 id（含块 id、会话 id、授权 id）符合 `^(ch|en|ln|sh|rev|file|blk|se|gr)_[a-z0-9_]{1,40}$`。账号 `id` 使用 actor 语法 `^[a-z][a-z0-9_]{0,63}$`，不是带前缀的资源 id。同一 `body` 内块 id 唯一。创建时客户端不传块 `id`，由服务端分配（前缀加 12 位十六进制）。种子导入可以指定符合该语法的 id。一个 body 最多 200 块。HTTP 创建频道、讨论、链接、分享、会话、授权时，请求体不得包含资源 `id`。创建账号的请求体必须含账号 `id`。
+资源 id（含块 id、会话 id、授权 id、入场 id）符合 `^(ch|en|ln|sh|rev|file|blk|se|gr|ad)_[a-z0-9_]{1,40}$`。账号 `id` 使用 actor 语法 `^[a-z][a-z0-9_]{0,63}$`，不是带前缀的资源 id。同一 `body` 内块 id 唯一。创建时客户端不传块 `id`，由服务端分配（前缀加 12 位十六进制）。种子导入可以指定符合该语法的 id。一个 body 最多 200 块。HTTP 创建频道、讨论、链接、分享、会话、授权、入场时，请求体不得包含资源 `id`。创建账号的请求体必须含账号 `id`。
 
 ### 1.3 讨论 entry
 
@@ -224,7 +225,8 @@ v1 一个提供方的全部频道使用同一份能力。客户端不能在创�
     "entry_threads": true,
     "links": true,
     "shares": true,
-    "revisions": false
+    "revisions": false,
+    "live": false
   }
 }
 ```
@@ -488,13 +490,41 @@ JSON 视图不含 `capabilities`、`members`、`revision`、修订列表、分�
 
 分享页面里的文件块使用分享令牌下载：`GET` / `HEAD` `/s/{token}/files/{fileId}`，免 Bearer，Range 规则与上相同，但文件必须被该频道当前正文或未删除讨论引用，否则 404 `not_found`。HTML 页里的文件块渲染为指向该 URL 的链接，链接文字为文件名。
 
+### 8.7 入场
+
+`POST /v1/channels/{id}/admissions`
+
+要登录，且当前身份能看见该频道。请求体必须是空对象 `{}`，不得自选过期时间。成功 201：
+
+```json
+{
+  "id": "ad_demo1",
+  "token": "只出现这一次的签名票",
+  "url": "udp://127.0.0.1:9100",
+  "expires_at": "2026-01-01T00:01:00.000Z",
+  "channel_id": "ch_walk",
+  "actor": { "id": "u_lin", "display_name": "林可" }
+}
+```
+
+- `id` 前缀 `ad_`
+- `expires_at` 由服务端写成签发时刻起约 60 秒
+- `url` 来自提供方配置的对局地址，不是分享 URL
+- `token` 是 HMAC 签名的自包含票，给对局进程校验；不写入频道正文，不产生修订，不进 `store.json`
+- 无 `live` 能力：404 `capability_unsupported`，`capability` 为 `live`，禁止空列表
+- 频道已删除：409 `deleted`
+- 看不见该频道：403 `forbidden`
+
+授权令牌与分享 token 都不能当作对局入场。帧格式见 `docs/MATCH.md`，不进本 schema。
+
 ## 9. 三个提供方的能力
 
-| 提供方 | id | 端口 | body | entries | entry_threads | links | shares | revisions |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 示例会话 | `chat` | 8781 | false | true | true | true | true | false |
-| 示例任务 | `tasks` | 8782 | true | true | false | true | true | true |
-| 示例笔记 | `notes` | 8783 | true | true | false | true | true | true |
+| 提供方 | id | 端口 | body | entries | entry_threads | links | shares | revisions | live |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 示例会话 | `chat` | 8781 | false | true | true | true | true | false | false |
+| 示例任务 | `tasks` | 8782 | true | true | false | true | true | true | false |
+| 示例笔记 | `notes` | 8783 | true | true | false | true | true | true | false |
+| 对局房间 | `walk` | 8785 | false | true | false | true | false | false | true |
 
 令牌都是 `demo-token`。actor 都是 `{ "id": "u_fuse", "display_name": "融合台" }`。`publicOrigin` 为 `http://127.0.0.1:{port}`。
 

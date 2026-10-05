@@ -14,6 +14,7 @@ const capabilities = {
   links: true,
   shares: false,
   revisions: false,
+  live: false,
 };
 
 type Entry = {
@@ -181,6 +182,10 @@ const server = http.createServer(async (req, res) => {
     const sharePath = path.match(/^\/v1\/channels\/[^/]+\/shares(?:\/|$)/) || path.match(/^\/v1\/shares(?:\/|$)/);
     if (sharePath) {
       sendProblem(res, 'capability_unsupported', { capability: 'shares' });
+      return;
+    }
+    if (path.match(/^\/v1\/channels\/[^/]+\/admissions$/)) {
+      sendProblem(res, 'capability_unsupported', { capability: 'live' });
       return;
     }
 

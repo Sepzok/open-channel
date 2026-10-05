@@ -227,6 +227,13 @@ export class Client {
     return data;
   }
 
+  async createAdmission(channelId: string) {
+    const { data, status } = await this.request('POST', `/v1/channels/${channelId}/admissions`, {
+      body: {},
+    });
+    return { data, status };
+  }
+
   async createShare(channelId: string, body: Record<string, unknown>, idempotencyKey?: string) {
     const { data, status } = await this.request('POST', `/v1/channels/${channelId}/shares`, {
       body,

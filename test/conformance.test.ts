@@ -158,6 +158,7 @@ describe('notes and native black-box', () => {
         }),
       'anchor_unsupported',
     );
+    await expectCode(() => client.createAdmission('ch_accept'), 'capability_unsupported', 'live');
     await expectCode(() => client.listChannels({ filter: 'title co "验收"' }), 'validation_error');
     await expectCode(() => client.listEntries('ch_accept', { parent_id: 'en_accept_1' }), 'threads_unsupported');
 

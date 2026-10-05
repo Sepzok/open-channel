@@ -43,16 +43,18 @@ npm run test:e2e
 | **分享 share** | 免登录只读或留言链接；浏览器默认打开 HTML |
 | **修订 revision** | 标题或正文每次成功写入后的快照（需 `capabilities.revisions`） |
 
-能力（`body`、`entries`、`entry_threads`、`links`、`shares`、`revisions`）写在发现文档与频道上；不支持的路由返回 `capability_unsupported`，不用空列表冒充。
+能力（`body`、`entries`、`entry_threads`、`links`、`shares`、`revisions`、`live`）写在发现文档与频道上；不支持的路由返回 `capability_unsupported`，不用空列表冒充。
 
-协议细节见 `docs/SPEC.md`，JSON Schema 见 `schema/ocp.v1.schema.json`。游戏房间可映射为频道；对局同步不走本协议，见 `docs/LIVE.md`。
+协议细节见 `docs/SPEC.md`，JSON Schema 见 `schema/ocp.v1.schema.json`。游戏房间可映射为频道；对局同步见 `docs/LIVE.md` 与 `docs/MATCH.md`。
 
 ## 包结构
 
 - `@open-channel/server` — 参考服务端 `createApp(options)`（可选用；第三方不必依赖它）
+- `@open-channel/match` — 权威对局进程（调用方提供 `reduce` / `encode`）
 - `@open-channel/sdk` — TypeScript 客户端（单 origin；跨提供方用多个 `Client` + `target_url`）
 - `sdk/python/openchannel` — Python 客户端（标准库 `urllib`）
 - `examples/chat|tasks|notes` — 三个参考提供方
+- `examples/walk` — 对局调用方薄例子（两人走动）；不要从这里抄玩法进内核
 - `examples/native` — 不引用 `createApp` 的工单适配（第三方服务端起点）
 - `examples/console` — 融合台：多 origin 汇合，并把各方频道用链接关联
 

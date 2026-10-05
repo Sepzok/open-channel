@@ -38,6 +38,7 @@
 docs/SPEC.md
 docs/PLAN.md
 docs/LIVE.md               大厅 HTTP 与对局进程的边界，不改 OCP 资源
+docs/MATCH.md              帧、节拍、reduce 合同
 schema/ocp.v1.schema.json
 schema/fixtures/valid/*.json
 schema/fixtures/invalid/*.json
@@ -48,7 +49,9 @@ examples/chat/           端口 8781，种子见 SPEC 附录 A
 examples/tasks/          端口 8782
 examples/notes/          端口 8783
 examples/console/        端口 8780，融合台
+examples/walk/           端口 8785，对局调用方薄例子
 examples/native/         独立适配例子，不引用 createApp
+match/                   包名 @open-channel/match，权威对局进程
 examples/providers.json
 docs/ADAPT.md            已有产品如何暴露 OCP、多提供方客户端如何关联
 e2e/console.mjs
@@ -56,7 +59,7 @@ README.md
 AGENTS.md
 ```
 
-根 `package.json` 使用 npm workspaces：`sdk/typescript`、`server`、`examples/chat`、`examples/tasks`、`examples/notes`、`examples/console`。
+根 `package.json` 使用 npm workspaces：`sdk/typescript`、`server`、`match`、`examples/chat`、`examples/tasks`、`examples/notes`、`examples/console`、`examples/walk`。
 
 运行时依赖只允许 Node 内置模块。根开发依赖：`typescript`、`tsx`、`playwright`、`ajv`、`ajv-formats`。Schema 的 `date-time` 要用 ajv-formats，不能手写放行。Python 只用标准库（`urllib`、`unittest`），不引入 pytest、httpx。浏览器验收使用本机 Chrome（`channel: 'chrome'`）。Playwright 只出现在根 devDependencies 和 `e2e/`，不进入 SDK 或服务端的依赖。
 
@@ -74,6 +77,7 @@ AGENTS.md
 - `dataDir`：`store.json` 与 `files/` 放这里
 - `publicOrigin`：拼分享 URL，例如 `http://127.0.0.1:8781`
 - `maxFileBytes`：默认 `64 * 1024 * 1024`
+- `liveUrl`、`liveSecret`：仅 `capabilities.live` 为真时签发入场；票给对局进程校验
 
 存储是单文件 JSON，写时先写临时文件再重命名。幂等键只放内存，进程重启失效，SPEC 已说明。
 
@@ -90,6 +94,7 @@ TypeScript：
 - `listEntries` `createEntry` `getEntry` `deleteEntry`
 - `listLinks` `createLink` `deleteLink`
 - `createShare` `getShare` `revokeShare` `resolveShare`（resolve 不带令牌）
+- `createAdmission`
 - `listRevisions` `getRevision` `restoreRevision`
 - `uploadFile` `downloadFile`
 - `getDiscovery` `listAccounts` `deleteSession`（`createSession` / `createAccount` / `createGrant` / `revokeGrant` 已有）
@@ -179,4 +184,4 @@ SDK 的 `resolveShare` 发送 `Accept: application/json`。
 
 联邦、WebSocket、表情回应、已读、OAuth、协同编辑、实时光标、npm 发布、公网部署。
 
-不把 OCP 改成对局同步：不平行再做一份低延迟版的频道、讨论、链接、修订；不把节拍、操作码、序号写进 `ocp.v1.schema.json`；不实现匹配池、区域目录、服务器舰队。大厅与对局的切法见 `docs/LIVE.md`。
+不把 OCP 改成对局同步：不平行再做一份低延迟版的频道、讨论、链接、修订；不把节拍、操作码、序号写进 `ocp.v1.schema.json`；不实现匹配池、区域目录、服务器舰队。大厅与对局的切法见 `docs/LIVE.md`；帧与 `reduce` 见 `docs/MATCH.md`。不要从 `examples/walk` 抄玩法进内核。

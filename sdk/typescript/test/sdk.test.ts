@@ -99,5 +99,14 @@ describe('TypeScript SDK', () => {
     assert.equal(disco.actor.id, 'u_fuse');
     const accounts = (await client.listAccounts()) as { data: { id: string }[] };
     assert.ok(accounts.data.some((a) => a.id === 'u_lin'));
+
+    try {
+      await client.createAdmission('ch_draft');
+      assert.fail('expected live unsupported');
+    } catch (e) {
+      assert.ok(e instanceof OcpError);
+      assert.equal(e.code, 'capability_unsupported');
+      assert.equal(e.body.capability, 'live');
+    }
   });
 });

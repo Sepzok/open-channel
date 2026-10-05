@@ -28,7 +28,7 @@
 
 频道 id 必须符合 schema 的 `ch_…` 形态。不要把外部系统的 `T-100` 直接当 `id`，放进 `ext.native_id`。
 
-`examples/native` 把内存里的工单映射成频道，源码不引用 `createApp`。它**没有**修订、分享和 SCIM，因为工单适配没有这些产品能力：发现文档里对应键为 `false`，路由回问题响应。不要从 native 抄这三项。
+`examples/native` 把内存里的工单映射成频道，源码不引用 `createApp`。它**没有**修订、分享、SCIM 和实时对局，因为工单适配没有这些产品能力：发现文档里对应键为 `false`，路由回问题响应。不要从 native 抄这四项。
 
 产品里**已经有**文档历史、对外链接或字段检索时，按下面做。合同仍是 SPEC；全开对照是 `examples/notes`（`NOTES_CAPS`）。TypeScript 可直接拷独立模块，不必依赖 `createApp`。
 
@@ -66,6 +66,18 @@ TypeScript 可拷 `server/src/html.ts` 的 `sharePageHtml`（依赖 `escapeHtml`
 必做：路径、`eq`/`ne`/`co`/`pr`/`gt` 等、AND/OR/`not`、长度与深度上限；非法 400。与 `type`、`updated_since`、`include_deleted` AND。
 
 TypeScript 可原样使用 `server/src/scimFilter.ts` 的 `parseListFilterQuery`（不引用 `createApp`）。其它语言按 SPEC §5 重写，用 `server/test/ext-filter.test.ts` 当验收。未做引擎时列表带 `filter` 必须 400，见 native。
+
+## 实时对局
+
+对照 SPEC §8.7、`docs/LIVE.md`、`docs/MATCH.md`。产品里**已经有**权威对局进程时才打开 `capabilities.live`。没有则发现文档为 `false`，`POST .../admissions` 返回 `capability_unsupported`。
+
+必做：
+
+- 签发短时 HMAC 票，绑定频道、参与者、约 60 秒过期；`url` 是对局地址
+- 对局进程 `verify` 后才进入调用方提供的 `reduce`
+- 帧与节拍不进 OCP schema；战绩如需留下再 HTTP 写讨论
+
+第三方实现自己的 `reduce` / `encode`，客户端按 `docs/MATCH.md` 组帧，入场只调 `createAdmission`。不要从 `examples/walk` 抄玩法。会话、任务、笔记、native 保持 `live: false`。
 
 ## 客户端（对接多个服务端）
 

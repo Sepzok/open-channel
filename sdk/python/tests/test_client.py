@@ -128,6 +128,46 @@ class SdkPythonTest(unittest.TestCase):
         parsed = parse_channel_resource_url(link["target_url"])
         self.assertEqual(parsed["channel_id"], "ch_proj")
         self.assertIsNone(parse_channel_resource_url("https://example.com/spec"))
+        with self.assertRaises(OcpError) as live_err:
+            client.create_admission("ch_draft")
+        self.assertEqual(live_err.exception.code, "capability_unsupported")
+        self.assertEqual(live_err.exception.body.get("capability"), "live")
+
+
+class SdkPythonLiveTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.data_dir = os.path.join(ROOT, "sdk", "python", "tests", "_data_walk")
+        os.makedirs(cls.data_dir, exist_ok=True)
+        store = os.path.join(cls.data_dir, "store.json")
+        if os.path.exists(store):
+            os.remove(store)
+        cls.proc = subprocess.Popen(
+            ["node", "--import", "tsx", os.path.join(ROOT, "examples", "walk", "index.ts")],
+            cwd=ROOT,
+            env={**os.environ, "PORT": "0", "MATCH_PORT": "0", "DATA_DIR": cls.data_dir},
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        hostport = wait_for_port(cls.proc)
+        cls.base_url = f"http://{hostport}"
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.proc.poll() is None:
+            cls.proc.terminate()
+            cls.proc.wait(timeout=10)
+
+    def test_create_admission(self):
+        client = Client(self.base_url, "demo-token")
+        disco = client.get_discovery()
+        self.assertTrue(disco["capabilities"]["live"])
+        status, body = client.create_admission("ch_walk")
+        self.assertEqual(status, 201)
+        self.assertTrue(body["id"].startswith("ad_"))
+        self.assertIn("token", body)
+        self.assertTrue(body["url"].startswith("udp://"))
+        self.assertEqual(body["channel_id"], "ch_walk")
 
 
 if __name__ == "__main__":

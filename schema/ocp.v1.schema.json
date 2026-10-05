@@ -5,7 +5,7 @@
   "$defs": {
     "id": {
       "type": "string",
-      "pattern": "^(ch|en|ln|sh|rev|file|blk|se|gr)_[a-z0-9_]{1,40}$"
+      "pattern": "^(ch|en|ln|sh|rev|file|blk|se|gr|ad)_[a-z0-9_]{1,40}$"
     },
     "actorId": {
       "type": "string",
@@ -50,7 +50,8 @@
         "entry_threads": { "type": "boolean" },
         "links": { "type": "boolean" },
         "shares": { "type": "boolean" },
-        "revisions": { "type": "boolean" }
+        "revisions": { "type": "boolean" },
+        "live": { "type": "boolean" }
       }
     },
     "member": {
@@ -227,6 +228,19 @@
         "display_name": { "type": "string", "minLength": 1, "maxLength": 80 },
         "provider_role": { "enum": ["owner", "member", "guest"] },
         "created_at": { "$ref": "#/$defs/dateTime" }
+      }
+    },
+    "admission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "token", "url", "expires_at", "channel_id", "actor"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "token": { "type": "string", "minLength": 16 },
+        "url": { "type": "string", "minLength": 1 },
+        "expires_at": { "$ref": "#/$defs/dateTime" },
+        "channel_id": { "$ref": "#/$defs/id" },
+        "actor": { "$ref": "#/$defs/actor" }
       }
     },
     "grantPublic": {

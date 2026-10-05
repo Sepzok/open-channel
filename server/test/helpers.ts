@@ -11,6 +11,7 @@ export const CHAT_CAPS: Capabilities = {
   links: true,
   shares: true,
   revisions: false,
+  live: false,
 };
 
 export const TASKS_CAPS: Capabilities = {
@@ -20,6 +21,7 @@ export const TASKS_CAPS: Capabilities = {
   links: true,
   shares: true,
   revisions: true,
+  live: false,
 };
 
 export const NOTES_CAPS: Capabilities = {
@@ -29,6 +31,17 @@ export const NOTES_CAPS: Capabilities = {
   links: true,
   shares: true,
   revisions: true,
+  live: false,
+};
+
+export const LIVE_CAPS: Capabilities = {
+  body: false,
+  entries: true,
+  entry_threads: false,
+  links: true,
+  shares: false,
+  revisions: false,
+  live: true,
 };
 
 export const ACTOR = { id: 'u_fuse', display_name: '融合台' };
@@ -37,7 +50,7 @@ export function tempDataDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'ocp-test-'));
 }
 
-export function loadSeed(name: 'chat' | 'tasks' | 'notes'): Seed {
+export function loadSeed(name: 'chat' | 'tasks' | 'notes' | 'walk'): Seed {
   const p = path.join(process.cwd(), 'examples', name, 'seed.json');
   return JSON.parse(fs.readFileSync(p, 'utf8')) as Seed;
 }
@@ -56,6 +69,8 @@ export async function startServer(
     dataDir,
     publicOrigin: partial.publicOrigin ?? 'http://127.0.0.1:0',
     maxFileBytes: partial.maxFileBytes,
+    liveUrl: partial.liveUrl,
+    liveSecret: partial.liveSecret,
   });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const addr = server.address();

@@ -9,5 +9,5 @@
     "declaration": true,
     "noEmit": true
   },
-  "include": ["server/src/**/*", "sdk/typescript/src/**/*", "examples/**/*", "test/**/*"]
+  "include": ["server/src/**/*", "sdk/typescript/src/**/*", "match/src/**/*", "examples/**/*", "test/**/*"]
 }

@@ -37,7 +37,7 @@ export function titleValid(title: string): boolean {
 }
 
 const TYPE_RE = /^[a-z][a-z0-9._-]{0,63}$/;
-const ID_RE = /^(ch|en|ln|sh|rev|file|blk|se|gr)_[a-z0-9_]{1,40}$/;
+const ID_RE = /^(ch|en|ln|sh|rev|file|blk|se|gr|ad)_[a-z0-9_]{1,40}$/;
 const ACTOR_ID_RE = /^[a-z][a-z0-9_]{0,63}$/;
 
 export function isTypeName(s: string): boolean {

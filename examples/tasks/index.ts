@@ -19,6 +19,7 @@ const options = {
     links: true,
     shares: true,
     revisions: true,
+    live: false,
   },
   actor: { id: 'u_fuse', display_name: '融合台' },
   token: 'demo-token',

@@ -5,6 +5,7 @@ export type Capabilities = {
   links: boolean;
   shares: boolean;
   revisions: boolean;
+  live?: boolean;
 };
 
 export type Actor = { id: string; display_name: string };
@@ -151,4 +152,6 @@ export type AppOptions = {
   dataDir: string;
   publicOrigin: string;
   maxFileBytes?: number;
+  liveUrl?: string;
+  liveSecret?: string;
 };
