@@ -117,8 +117,10 @@ export function renderSurfacePage(opts: {
   kind: SurfaceKind;
   locale: Locale;
   snapshot: SurfaceSnapshot;
+  /** Relative URL to Pages demo runtime (fetch shim). Omitted for local Node. */
+  demoRuntimeSrc?: string;
 }): string {
-  const { kind, locale, snapshot } = opts;
+  const { kind, locale, snapshot, demoRuntimeSrc } = opts;
   const t = messagesFor(locale);
   const title = displaySeedText(snapshot.provider.name, locale);
   const snapshotJson = JSON.stringify(snapshot).replace(/</g, '\\u003c');
@@ -126,6 +128,9 @@ export function renderSurfacePage(opts: {
   const seedTextJson = JSON.stringify(SEED_TEXT_EN).replace(/</g, '\\u003c');
   const seedTitlesJson = JSON.stringify(SEED_CHANNEL_TITLES).replace(/</g, '\\u003c');
   const titlesHint = seedTitlesInHtml(snapshot, locale);
+  const runtimeTag = demoRuntimeSrc
+    ? `<script src="${escapeHtml(demoRuntimeSrc)}"></script>\n`
+    : '';
   return `<!DOCTYPE html>
 <html lang="${escapeHtml(t.htmlLang)}">
 <head>
@@ -146,13 +151,14 @@ export function renderSurfacePage(opts: {
 </header>
 <div id="app" class="app app-${escapeHtml(kind)}"></div>
 <div class="sr-only">${titlesHint}</div>
-<script>
+${runtimeTag}<script>
 const KIND = ${JSON.stringify(kind)};
 const INITIAL_LOCALE = ${JSON.stringify(locale)};
 const T0 = ${messagesJson};
 const SEED_TEXT = ${seedTextJson};
 const SEED_TITLES_FULL = ${seedTitlesJson};
 let SNAPSHOT = ${snapshotJson};
+window.SNAPSHOT = SNAPSHOT;
 ${surfaceClientJs()}
 </script>
 </body>
@@ -304,7 +310,7 @@ function whoBar() {
 }
 
 async function enterAs(id) {
-  const res = await fetch('/v1/sessions', {
+  const res = await fetch('v1/sessions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/vnd.ocp+json' },
     body: JSON.stringify({ id, password: 'demo-pass' })
@@ -321,7 +327,7 @@ async function sendText(channelId, type, extra) {
   if (!text || !sessionToken) return;
   const body = { type, body: [{ type: 'text', text, format: 'plain' }], parent_id: null, anchor: null };
   if (extra) Object.assign(body, extra);
-  const res = await fetch('/v1/channels/' + encodeURIComponent(channelId) + '/entries', {
+  const res = await fetch('v1/channels/' + encodeURIComponent(channelId) + '/entries', {
     method: 'POST',
     headers: {
       Authorization: 'Bearer ' + sessionToken,
@@ -333,6 +339,7 @@ async function sendText(channelId, type, extra) {
   if (!res.ok) return;
   const entry = await res.json();
   SNAPSHOT.entries.push(entry);
+  window.SNAPSHOT = SNAPSHOT;
   render();
 }
 

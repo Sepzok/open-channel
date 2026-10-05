@@ -132,7 +132,7 @@ async function loadChannels() {
   const params = new URLSearchParams();
   params.set('lang', locale);
   if (q) params.set('q', q);
-  const res = await fetch('/api/channels?' + params.toString());
+  const res = await fetch('api/channels?' + params.toString());
   const data = await res.json();
   channels = data.channels || [];
   renderList();
@@ -168,7 +168,7 @@ function escapeHtml(s) {
 async function openChannel(providerId, channelId) {
   selected = { providerId, channelId };
   renderList();
-  const res = await fetch('/api/channels/' + providerId + '/' + channelId);
+  const res = await fetch('api/channels/' + providerId + '/' + channelId);
   detail = await res.json();
   renderDetail();
 }
@@ -275,7 +275,7 @@ async function sendEntry() {
   if (!selected) return;
   const text = document.getElementById('entry-text').value.trim();
   if (!text) return;
-  await fetch('/api/channels/' + selected.providerId + '/' + selected.channelId + '/entries', {
+  await fetch('api/channels/' + selected.providerId + '/' + selected.channelId + '/entries', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text }),
@@ -285,7 +285,7 @@ async function sendEntry() {
 
 async function associateTo(providerId, channelId, title) {
   if (!selected) return;
-  await fetch('/api/channels/' + selected.providerId + '/' + selected.channelId + '/links', {
+  await fetch('api/channels/' + selected.providerId + '/' + selected.channelId + '/links', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ providerId, channelId, title }),
@@ -316,7 +316,7 @@ async function openAssociate() {
 
 async function createShare() {
   if (!selected) return;
-  const res = await fetch('/api/channels/' + selected.providerId + '/' + selected.channelId + '/shares', { method: 'POST' });
+  const res = await fetch('api/channels/' + selected.providerId + '/' + selected.channelId + '/shares', { method: 'POST' });
   const data = await res.json();
   const el = document.getElementById('share-url');
   if (el) el.textContent = data.url || '';
@@ -324,7 +324,7 @@ async function createShare() {
 
 async function restoreRev(revId) {
   if (!selected) return;
-  await fetch('/api/channels/' + selected.providerId + '/' + selected.channelId + '/revisions/' + revId + '/restore', { method: 'POST' });
+  await fetch('api/channels/' + selected.providerId + '/' + selected.channelId + '/revisions/' + revId + '/restore', { method: 'POST' });
   await openChannel(selected.providerId, selected.channelId);
 }
 

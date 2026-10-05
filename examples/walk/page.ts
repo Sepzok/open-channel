@@ -15,7 +15,12 @@ type Snap = {
   accounts: { id: string; display_name: string }[];
 };
 
-export function renderWalkPage(ctx: { locale: Locale; snapshot: unknown }): string {
+export function renderWalkPage(ctx: {
+  locale: Locale;
+  snapshot: unknown;
+  demoRuntimeSrc?: string;
+  walkDemoSrc?: string;
+}): string {
   const snapshot = ctx.snapshot as Snap;
   const locale = ctx.locale;
   const t = messagesFor(locale);
@@ -23,6 +28,9 @@ export function renderWalkPage(ctx: { locale: Locale; snapshot: unknown }): stri
   const room = snapshot.channels.find((c) => c.id === 'ch_walk') ?? snapshot.channels[0];
   const roomTitle = room ? displayChannelTitle(room.id, room.title, locale) : title;
   const snapJson = JSON.stringify(snapshot).replace(/</g, '\\u003c');
+  const runtimeTags =
+    (ctx.demoRuntimeSrc ? `<script src="${escapeHtml(ctx.demoRuntimeSrc)}"></script>\n` : '') +
+    (ctx.walkDemoSrc ? `<script src="${escapeHtml(ctx.walkDemoSrc)}"></script>\n` : '');
   return `<!DOCTYPE html>
 <html lang="${escapeHtml(t.htmlLang)}">
 <head>
@@ -68,10 +76,11 @@ export function renderWalkPage(ctx: { locale: Locale; snapshot: unknown }): stri
   <button type="button" id="walk-start">${escapeHtml(t.walkStart)}</button>
   <div class="log" id="walk-log"></div>
 </div>
-<script type="module">
+${runtimeTags}<script type="module">
 ${ocm1Src}
 const locale = ${JSON.stringify(locale)};
 const SNAPSHOT = ${snapJson};
+window.SNAPSHOT = SNAPSHOT;
 document.getElementById('lang-zh').classList.toggle('active', locale === 'zh');
 document.getElementById('lang-en').classList.toggle('active', locale === 'en');
 document.getElementById('lang-zh').onclick = () => { const u = new URL(location.href); u.searchParams.set('lang','zh'); location.href = u; };
@@ -93,7 +102,7 @@ function applyState(state) {
 }
 
 async function session(id) {
-  const res = await fetch('/v1/sessions', {
+  const res = await fetch('v1/sessions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/vnd.ocp+json' },
     body: JSON.stringify({ id, password: 'demo-pass' })
@@ -103,7 +112,7 @@ async function session(id) {
 }
 
 async function admit(token) {
-  const res = await fetch('/v1/channels/' + CHANNEL + '/admissions', {
+  const res = await fetch('v1/channels/' + CHANNEL + '/admissions', {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.ocp+json', 'Content-Type': 'application/json' },
     body: '{}'
@@ -112,6 +121,9 @@ async function admit(token) {
 }
 
 function openPlayer(actorId, admission) {
+  if (admission.url && String(admission.url).startsWith('inproc:') && window.OCP_WALK_DEMO) {
+    return window.OCP_WALK_DEMO.openPlayer(actorId, admission, applyState);
+  }
   const ws = new WebSocket(admission.url);
   ws.binaryType = 'arraybuffer';
   let inputSeq = 1;

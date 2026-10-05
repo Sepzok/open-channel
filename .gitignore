@@ -5,6 +5,7 @@ examples/**/files/
 e2e/_data_*/
 sdk/python/tests/_data_*/
 dist/
+site/
 *.log
 __pycache__/
 *.pyc

@@ -15,7 +15,7 @@ Ship a locally runnable product that reads and writes sessions, tasks, and notes
 - One fusion console that reads all three, writes discussion, and creates shares
 - Tests that prove mechanisms, not merely that files exist
 
-Source is MIT-licensed. Do not run `npm publish`, upload to PyPI, or deploy a public service. Root `package.json` is `private: true`.
+Source is MIT-licensed. Do not run `npm publish`, upload to PyPI, or host a public OCP API / long-lived provider process. In-browser static demos on GitHub Pages are allowed. Root `package.json` is `private: true`.
 
 ## Why this shape
 
@@ -196,7 +196,7 @@ Mechanisms that must appear (each with assertions—not only HTTP 200):
 
 SDK `resolveShare` sends `Accept: application/json`.
 
-`AGENTS.md` / `AGENTS.en.md` state: protocol changes must update SPEC (zh + en), schema, both SDKs, and tests; source is MIT, no npm publish, no public deploy; UI follows the active locale with industry terms.
+`AGENTS.md` / `AGENTS.en.md` state: protocol changes must update SPEC (zh + en), schema, both SDKs, and tests; source is MIT, no npm publish, no public OCP API (browser Pages demos allowed); UI follows the active locale with industry terms.
 
 The console discussion input sits inside the discussion section and scrolls with the page—not `position: fixed` on the viewport bottom.
 
@@ -226,7 +226,7 @@ Forbidden thin paths (tests must block as negative cases, or treat as incomplete
 2. Server and acceptance items 2–7.
 3. Both SDKs and item 8.
 4. Three provider entry points, seeds, console, items 9–10.
-5. README: how to start, how to test, one-page resource model, license and “no npm publish / no public deploy.”
+5. README: how to start, how to test, one-page resource model, license and “no npm publish / no public OCP API.”
 
 ## Non-goals
 

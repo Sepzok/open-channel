@@ -23,7 +23,9 @@ OCP describes HTTP document resources only. Match state does not enter channel b
 
 ## Release
 
-Source is MIT-licensed. Do not run `npm publish`, upload to PyPI, or deploy a public service. Root `package.json` is `private: true`.
+Source is MIT-licensed. Do not run `npm publish` or upload to PyPI. Root `package.json` is `private: true`.
+
+**Do not host a public OCP API or long-lived provider process.** Static demos on GitHub Pages are allowed: state stays in the visitor’s browser via a mini runtime for sessions and posting—not a public provider others can call as an API.
 
 On GitHub this repo is under `Sepzok`: commit as `Sepzok <dev@sepzok.com>`; Contributors must not list other GitHub users; do not add `Co-authored-by: Cursor`. Cross-repo detail: user-level `sepzok-github-identity.mdc`.
 
