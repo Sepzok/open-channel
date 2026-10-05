@@ -173,13 +173,15 @@ function injectConsoleDemo(html, bundlesJson) {
 }
 
 function buildHub() {
+  // Use …/index.html so the same tree works on GitHub Pages and CDN mirrors
+  // that do not auto-serve directory indexes (e.g. jsDelivr).
   const cards = [
-    { href: 'chat/', titleZh: '示例会话', titleEn: 'Sample chat', blurbZh: '列表与气泡，可登录发消息', blurbEn: 'List and bubbles — sign in and send' },
-    { href: 'tasks/', titleZh: '示例任务', titleEn: 'Sample tasks', blurbZh: '项目与任务评论', blurbEn: 'Projects and task comments' },
-    { href: 'notes/', titleZh: '示例笔记', titleEn: 'Sample notes', blurbZh: '文稿与批注', blurbEn: 'Document and annotations' },
-    { href: 'ticket/', titleZh: '工单适配', titleEn: 'Ticket adapter', blurbZh: '独立适配展示', blurbEn: 'Standalone adapter showcase' },
-    { href: 'walk/', titleZh: '走动房间', titleEn: 'Walk room', blurbZh: '页内对局，方向键走动', blurbEn: 'In-page match — arrow keys to walk' },
-    { href: 'console/', titleZh: '融合台', titleEn: 'Fusion console', blurbZh: '三源频道一览', blurbEn: 'Three providers in one view' },
+    { href: 'chat/index.html', titleZh: '示例会话', titleEn: 'Sample chat', blurbZh: '列表与气泡，可登录发消息', blurbEn: 'List and bubbles — sign in and send' },
+    { href: 'tasks/index.html', titleZh: '示例任务', titleEn: 'Sample tasks', blurbZh: '项目与任务评论', blurbEn: 'Projects and task comments' },
+    { href: 'notes/index.html', titleZh: '示例笔记', titleEn: 'Sample notes', blurbZh: '文稿与批注', blurbEn: 'Document and annotations' },
+    { href: 'ticket/index.html', titleZh: '工单适配', titleEn: 'Ticket adapter', blurbZh: '独立适配展示', blurbEn: 'Standalone adapter showcase' },
+    { href: 'walk/index.html', titleZh: '走动房间', titleEn: 'Walk room', blurbZh: '页内对局，方向键走动', blurbEn: 'In-page match — arrow keys to walk' },
+    { href: 'console/index.html', titleZh: '融合台', titleEn: 'Fusion console', blurbZh: '三源频道一览', blurbEn: 'Three providers in one view' },
   ];
   const cardHtml = cards
     .map(

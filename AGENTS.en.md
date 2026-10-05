@@ -25,7 +25,7 @@ OCP describes HTTP document resources only. Match state does not enter channel b
 
 Source is MIT-licensed. Do not run `npm publish` or upload to PyPI. Root `package.json` is `private: true`.
 
-**Do not host a public OCP API or long-lived provider process.** Static demos on GitHub Pages are allowed: state stays in the visitor’s browser via a mini runtime for sessions and posting—not a public provider others can call as an API. Build/publish locally with `npm run pages:build` and `npm run pages:deploy` (mirrors `gh-pages` and triggers the Pages workflow).
+**Do not host a public OCP API or long-lived provider process.** Static demos on GitHub Pages are allowed: state stays in the visitor’s browser via a mini runtime for sessions and posting—not a public provider others can call as an API. Build/publish locally with `npm run pages:build` and `npm run pages:deploy` (pushes `gh-pages` on `open-channel`/`ocp`, and best-effort Pages workflow).
 
 On GitHub this repo is under `Sepzok`: commit as `Sepzok <dev@sepzok.com>`; Contributors must not list other GitHub users; do not add `Co-authored-by: Cursor`. Cross-repo detail: user-level `sepzok-github-identity.mdc`.
 
