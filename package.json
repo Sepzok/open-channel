@@ -1,6 +1,10 @@
 {
   "name": "open-channel",
   "private": true,
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
   "workspaces": [
     "sdk/typescript",
     "server",

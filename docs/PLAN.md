@@ -13,7 +13,7 @@
 - 一个融合台，同时读取三个提供方，并能写讨论、创建分享
 - 测试能单独证明机制，而不是只证明「文件存在」
 
-不发布到公网，不创建远程仓库，不执行 `npm publish`。
+源码以 MIT 公开。不执行 `npm publish`，不向 PyPI 上传，不部署公网服务。根 `package.json` 为 `private: true`。
 
 ## 为什么是这套形状
 
@@ -147,7 +147,7 @@ Python 用同名 snake_case。查询参数、路径、请求体与 SPEC 相同�
 
 SDK 的 `resolveShare` 发送 `Accept: application/json`。
 
-`AGENTS.md` 写明：改协议必须同时改 SPEC、schema、两份 SDK 和测试；不发布到公网；界面中文用行业用语。
+`AGENTS.md` 写明：改协议必须同时改 SPEC、schema、两份 SDK 和测试；源码以 MIT 公开、不发 npm、不部署公网服务；界面中文用行业用语。
 
 融合台写讨论的输入框放在讨论区内随页面滚动，不 `position: fixed` 贴在视口底边。
 
@@ -173,7 +173,7 @@ SDK 的 `resolveShare` 发送 `Accept: application/json`。
 2. 服务端与第 2–7 条测试。
 3. 两份 SDK 与第 8 条。
 4. 三个提供方入口、种子、融合台、第 9–10 条。
-5. README：怎么启动、怎么测、资源模型一页纸、明确写不发布。
+5. README：怎么启动、怎么测、资源模型一页纸、许可证与「不发 npm / 不部署公网服务」。
 
 ## 非目标
 
