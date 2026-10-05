@@ -8,7 +8,7 @@
 
 ### 1.1 频道 channel
 
-可寻址容器。会话、项目、任务、笔记都是频道。
+可寻址容器。会话、项目、任务、笔记、曲库、单曲都是频道。子项（任务、单曲、单篇笔记）各自是带正文的频道，不是讨论。
 
 | 字段 | 说明 |
 | --- | --- |
@@ -89,6 +89,12 @@ v1 一个提供方的全部频道使用同一份能力。客户端不能在创�
 
 `target_id` 必须是本提供方未删除的频道，否则 400 `validation_error`。
 
+不设第二套 hierarchy 资源，也不在频道上挂 `parent_id`。层级与网络都用链接：
+
+- **层级**：边从子频道指出，`type` 为 `parent`，`target_id` 为父频道。列子项：对父频道 `GET .../links?direction=in&type=parent`。同一约定用于项目←任务、曲库←单曲、笔记本←单篇。
+- **网络**：`references`、`related`、`blocks`、`blocked_by` 等。不自动物化路径，不递归展开树。
+- 子项正文放在该子频道的 `body`（如单曲的音频 `file` 块）。讨论只作评论或批注，不当曲目或子任务列表。
+
 ### 1.5 分享 share
 
 | 字段 | 说明 |
@@ -125,7 +131,7 @@ v1 一个提供方的全部频道使用同一份能力。客户端不能在创�
 
 语法：`^[a-z][a-z0-9._-]{0,63}$`。不符合为 400 `validation_error`。符合语法但不在下表的值**必须接受**（扩展点）。
 
-频道常见值：`dm` `group` `room` `project` `task` `note`。
+频道常见值：`dm` `group` `room` `project` `task` `note` `library` `track`。
 
 讨论常见值：`message` `comment` `annotation`。
 
@@ -141,6 +147,7 @@ v1 一个提供方的全部频道使用同一份能力。客户端不能在创�
 
 - `GET /v1`
 - `GET /s/{token}`
+- `GET /s/{token}/files/{fileId}` 与对应 `HEAD`
 - `POST /s/{token}/entries`
 
 失败：401，`code` 为 `unauthorized`。不要返回 403 来表示缺少令牌。
@@ -192,6 +199,7 @@ HTTP 状态与下列 body 同时成立。`Content-Type: application/problem+json
 | `idempotency_conflict` | 409 | 同一幂等键，请求体摘要不同 |
 | `file_not_found` | 400 | 块引用的文件 id 不存在 |
 | `file_too_large` | 413 | 超过 `maxFileBytes` |
+| `range_not_satisfiable` | 416 | `Range` 越界。响应带 `Content-Range: bytes */{size}` |
 | `anchor_unsupported` | 400 | |
 | `threads_unsupported` | 400 | |
 | `share_unavailable` | 404 | 令牌不存在、已撤销或已过期 |
@@ -218,7 +226,10 @@ HTTP 状态与下列 body 同时成立。`Content-Type: application/problem+json
 
 讨论列表查询：`order` 为 `asc`（默认）或 `desc`，按 `created_at`；`parent_id` 若给出则只返回该父的直接子条（不含父条本身）。
 
-链接列表查询：`direction` 为 `out`（默认）、`in`、`both`。
+链接列表查询：
+
+- `direction` 为 `out`（默认）、`in`、`both`
+- `type`：可选，与第 2 节 type 语法相同。给出时只返回该关系类型。服务端必须过滤，不得只靠客户端筛全量
 
 `GET` 单个资源：已软删除仍返回该资源（带 `deleted_at`），以便同步。从未存在才是 `not_found`。
 
@@ -296,6 +307,8 @@ HTTP 状态与下列 body 同时成立。`Content-Type: application/problem+json
 
 `GET /v1/channels/{id}/links`
 
+附录任务种子里，对 `ch_proj` 使用 `direction=in&type=parent` 得到「首页文案」「配图导出」两条边。这就是层级约定，不是另一套资源。
+
 `POST /v1/channels/{id}/links`
 
 ```json
@@ -372,9 +385,17 @@ JSON 视图不含 `capabilities`、`members`、`revision`、修订列表、分�
 
 响应 201 与文件元数据 `{ "id", "name", "media_type", "size" }`，`id` 前缀 `file_`。
 
-`GET /v1/files/{id}` 返回原始字节，`Content-Type` 为上传时的媒体类型，`X-File-Name` 为编码后的文件名。要认证。
+`GET /v1/files/{id}` 与 `HEAD /v1/files/{id}` 要认证。响应带 `Accept-Ranges: bytes`、`Content-Length`（本次发送的字节数）、`Content-Type`（上传时的媒体类型）、`X-File-Name`（百分号编码的文件名）。
 
-分享页面里的文件块使用分享令牌下载：`GET /s/{token}/files/{fileId}`，免 Bearer，但文件必须被该频道当前正文或未删除讨论引用，否则 404 `not_found`。HTML 页里的文件块渲染为指向该 URL 的链接，链接文字为文件名。
+- 无 `Range`：200，整文件。不得要求客户端必须带 Range。
+- `Range: bytes=start-end`：合法则 206，`Content-Range: bytes start-end/total`，只发送该闭区间。`end` 可省略，表示直到文件末尾。
+- 越界（例如起点大于或等于文件大小）：416，`code` 为 `range_not_satisfiable`。
+- 多段 `bytes=0-1,2-3`：400 `validation_error`。
+- `HEAD` 与对应 GET 相同响应头，无正文。
+
+参考实现 `maxFileBytes` 默认 64MiB。超过则 413 `file_too_large`，磁盘上不留该次上传的正式文件 id，也不留 `.part`。
+
+分享页面里的文件块使用分享令牌下载：`GET` / `HEAD` `/s/{token}/files/{fileId}`，免 Bearer，Range 规则与上相同，但文件必须被该频道当前正文或未删除讨论引用，否则 404 `not_found`。HTML 页里的文件块渲染为指向该 URL 的链接，链接文字为文件名。
 
 ## 9. 三个提供方的能力
 
@@ -390,14 +411,15 @@ JSON 视图不含 `capabilities`、`members`、`revision`、修订列表、分�
 
 这些约束只约束本仓库的参考服务端，不是互操作的必选项：
 
-- 数据文件 `store.json`，文件字节在 `files/` 目录，文件名等于 file id
+- 数据文件 `store.json` 只含频道、讨论、链接、分享、修订、文件元数据。文件字节只在 `files/` 目录，文件名等于 file id，不写入 JSON。上传边收边写临时 `.part`，成功后再改名为 id；下载用流，不把整文件读进内存。
+- `maxFileBytes` 默认 `64 * 1024 * 1024`，创建应用时可覆盖。
 - 种子只在 `store.json` 不存在时导入
 - 导入顺序：文件、频道（数组顺序）、`edits`（数组顺序）、讨论（数组顺序）、链接。讨论的 `parent_id` 必须指向已经导入的讨论
 - 导入走与 API 相同的校验和修订生成。种子可以指定资源 id 和讨论作者。文件块的 `name`、`media_type`、`size` 以文件记录为准写回；`size` 为 UTF-8 字节长度
 - 笔记种子的 `edits` 按顺序作为正文更新执行，因此至少产生「创建」「编辑」两条修订。第一条修订的正文只有创建时的块
 - 同一进程内的写操作串行执行，避免并发把 `store.json` 盖乱
 - 幂等缓存只在内存
-- 监听地址 `127.0.0.1`。测试使用系统分配的端口，不占用附录里的固定端口
+- 默认监听 `127.0.0.1`。例子入口可用环境变量 `HOST` 改为 `0.0.0.0`；此时分享 `publicOrigin` 使用本机第一个非回环 IPv4。测试不设 `HOST`，仍用回环与系统分配的端口，不占用附录里的固定端口。曲库可映射为 `library` 频道加若干 `track` 子频道（`parent` 边从单曲指出），本仓库不另做音乐提供方。
 
 ## 附录 A 种子
 
@@ -553,6 +575,8 @@ JSON 视图不含 `capabilities`、`members`、`revision`、修订列表、分�
 }
 ```
 
+这就是层级约定：子任务频道发出 `type=parent` 的边。对 `ch_proj` 使用 `GET .../links?direction=in&type=parent` 得到那两条边。`ln_img_blocks` 是网络关系，不是父子。
+
 ### A.3 笔记 `examples/notes/seed.json`
 
 ```json
@@ -645,6 +669,8 @@ JSON 视图不含 `capabilities`、`members`、`revision`、修订列表、分�
   ]
 }
 ```
+
+`ln_draft_gloss` 是网络关系（`references`），不是父子层级。
 
 文件块的 `size` 在导入时按 UTF-8 字节长度写回，种子里的 `0` 只是占位。编辑在讨论导入之前执行，这样批注锚点指向的块仍然存在。
 

@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import net from 'node:net';
+import fs from 'node:fs';
 import { chromium } from 'playwright';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -20,9 +21,11 @@ function getFreePort() {
 
 function startProvider(entry, port, dataSubdir) {
   return new Promise((resolve, reject) => {
+    const dataDir = path.join(root, 'e2e', dataSubdir);
+    fs.rmSync(dataDir, { recursive: true, force: true });
     const child = spawn(process.execPath, [tsx, path.join(root, entry)], {
       cwd: root,
-      env: { ...process.env, PORT: String(port), DATA_DIR: path.join(root, 'e2e', dataSubdir) },
+      env: { ...process.env, PORT: String(port), DATA_DIR: dataDir },
       stdio: ['ignore', 'pipe', 'inherit'],
     });
     let buf = '';
@@ -86,7 +89,7 @@ async function main() {
     const textarea = page.locator('#entry-text');
     await textarea.fill('E2E 讨论验收句');
     await page.getByRole('button', { name: '发送' }).click();
-    await page.getByText('E2E 讨论验收句').waitFor();
+    await page.locator('#entries .entry').filter({ hasText: 'E2E 讨论验收句' }).waitFor();
     await page.getByRole('button', { name: '创建分享' }).click();
     await page.locator('.share-url').getByText(/\/s\//).waitFor();
     console.log('e2e: ok');

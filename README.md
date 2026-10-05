@@ -20,7 +20,7 @@ npm run dev:notes
 npm run dev:console
 ```
 
-浏览器只访问融合台：`http://127.0.0.1:8780`。三个提供方令牌均为 `demo-token`。
+浏览器只访问融合台：`http://127.0.0.1:8780`。三个提供方令牌均为 `demo-token`。局域网访问可设 `HOST=0.0.0.0`（默认仍只绑回环）。文件下载支持 `Range`；参考实现默认单文件上限 64MiB。
 
 ## 测试
 
@@ -39,7 +39,7 @@ npm run test:e2e
 | **频道 channel** | 可寻址容器（私聊、群组、项目、任务、笔记等用 `type` 区分） |
 | **块 block** | 正文由 `text` / `file` / `embed` 块组成 |
 | **讨论 entry** | 附在频道上的记录（消息、评论、批注等用 `type` 区分） |
-| **链接 link** | 同提供方频道之间的有向边，或指向外部 URL |
+| **链接 link** | 同提供方频道之间的有向边，或指向外部 URL。层级用子→父的 `parent` 边（项目←任务、曲库←单曲）；网络用 `references` 等。子项是带正文的频道，不是讨论 |
 | **分享 share** | 免登录只读或留言链接；浏览器默认打开 HTML |
 | **修订 revision** | 标题或正文每次成功写入后的快照（需 `capabilities.revisions`） |
 

@@ -4,9 +4,11 @@ import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { aggregateChannels, entryTypeForChannel, type ProviderConfig } from './src/aggregate.js';
 import { renderPage } from './src/page.js';
+import { bindHost, originAfterListen } from '@open-channel/server';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT ?? 8780);
+const host = bindHost();
 
 function loadProviders(): ProviderConfig[] {
   const raw = JSON.parse(fs.readFileSync(path.join(dir, '..', 'providers.json'), 'utf8')) as ProviderConfig[];
@@ -78,6 +80,21 @@ const server = http.createServer(async (req, res) => {
       const channelRes = await proxyJson(p, `/v1/channels/${channelId}`);
       const entriesRes = caps.entries ? await proxyJson(p, `/v1/channels/${channelId}/entries`) : null;
       const linksRes = caps.links ? await proxyJson(p, `/v1/channels/${channelId}/links`) : null;
+      let linksInParent: { data: unknown[] } | null = null;
+      if (caps.links) {
+        const inbound = await proxyJson(p, `/v1/channels/${channelId}/links?direction=in&type=parent`);
+        const rows = ((inbound.body as { data?: { source_id: string; type: string; title?: string }[] })?.data ??
+          []) as { source_id: string; type: string; title?: string }[];
+        const labeled = [];
+        for (const l of rows) {
+          const src = await proxyJson(p, `/v1/channels/${l.source_id}`);
+          labeled.push({
+            ...l,
+            label: (src.body as { title?: string })?.title ?? l.source_id,
+          });
+        }
+        linksInParent = { data: labeled };
+      }
       const revisionsRes = caps.revisions ? await proxyJson(p, `/v1/channels/${channelId}/revisions`) : null;
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(
@@ -86,6 +103,7 @@ const server = http.createServer(async (req, res) => {
           channel: channelRes.body,
           entries: entriesRes?.body ?? null,
           links: linksRes?.body ?? null,
+          linksInParent,
           revisions: revisionsRes?.body ?? null,
         }),
       );
@@ -137,17 +155,34 @@ const server = http.createServer(async (req, res) => {
     }
 
     const fileProxy = url.pathname.match(/^\/api\/files\/([^/]+)\/([^/]+)$/);
-    if (fileProxy && req.method === 'GET') {
+    if (fileProxy && (req.method === 'GET' || req.method === 'HEAD')) {
       const p = providerById(fileProxy[1]!);
       const fileId = fileProxy[2]!;
+      const headers: Record<string, string> = { Authorization: `Bearer ${p!.token}` };
+      const range = req.headers.range;
+      if (range) headers.Range = Array.isArray(range) ? range[0]! : range;
       const upstream = await fetch(`${p!.baseUrl.replace(/\/$/, '')}/v1/files/${fileId}`, {
-        headers: { Authorization: `Bearer ${p!.token}` },
+        method: req.method,
+        headers,
       });
-      const buf = Buffer.from(await upstream.arrayBuffer());
-      res.writeHead(upstream.status, {
+      const out: Record<string, string> = {
         'Content-Type': upstream.headers.get('content-type') ?? 'application/octet-stream',
-        'X-File-Name': upstream.headers.get('x-file-name') ?? '',
-      });
+      };
+      const fileName = upstream.headers.get('x-file-name');
+      if (fileName) out['X-File-Name'] = fileName;
+      const acceptRanges = upstream.headers.get('accept-ranges');
+      if (acceptRanges) out['Accept-Ranges'] = acceptRanges;
+      const contentRange = upstream.headers.get('content-range');
+      if (contentRange) out['Content-Range'] = contentRange;
+      const contentLength = upstream.headers.get('content-length');
+      if (contentLength) out['Content-Length'] = contentLength;
+      if (req.method === 'HEAD') {
+        res.writeHead(upstream.status, out);
+        res.end();
+        return;
+      }
+      const buf = Buffer.from(await upstream.arrayBuffer());
+      res.writeHead(upstream.status, out);
       res.end(buf);
       return;
     }
@@ -161,8 +196,8 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(port, '127.0.0.1', () => {
+server.listen(port, host, () => {
   const addr = server.address();
   const p = typeof addr === 'object' && addr ? addr.port : port;
-  console.log(`console http://127.0.0.1:${p}`);
+  console.log(`console ${originAfterListen(host, p)}`);
 });

@@ -95,6 +95,44 @@ export function escapeHtml(s: string): string {
     .replace(/'/g, '&#39;');
 }
 
+export function parseByteRange(
+  header: string | undefined,
+  size: number,
+):
+  | { kind: 'all' }
+  | { kind: 'partial'; start: number; end: number }
+  | { kind: 'unsatisfiable' }
+  | { kind: 'invalid' } {
+  if (!header || !header.trim()) return { kind: 'all' };
+  const trimmed = header.trim();
+  if (!trimmed.toLowerCase().startsWith('bytes=')) return { kind: 'invalid' };
+  const spec = trimmed.slice(6).trim();
+  if (spec.includes(',')) return { kind: 'invalid' };
+  const m = /^(\d*)-(\d*)$/.exec(spec);
+  if (!m) return { kind: 'invalid' };
+  const startRaw = m[1]!;
+  const endRaw = m[2]!;
+  if (startRaw === '' && endRaw === '') return { kind: 'invalid' };
+  if (size <= 0) return { kind: 'unsatisfiable' };
+  let start: number;
+  let end: number;
+  if (startRaw === '') {
+    const suffix = parseInt(endRaw, 10);
+    if (!Number.isFinite(suffix) || suffix < 1) return { kind: 'invalid' };
+    start = Math.max(0, size - suffix);
+    end = size - 1;
+  } else {
+    start = parseInt(startRaw, 10);
+    if (!Number.isFinite(start)) return { kind: 'invalid' };
+    if (start >= size) return { kind: 'unsatisfiable' };
+    end = endRaw === '' ? size - 1 : parseInt(endRaw, 10);
+    if (!Number.isFinite(end)) return { kind: 'invalid' };
+    if (end < start) return { kind: 'invalid' };
+    if (end >= size) end = size - 1;
+  }
+  return { kind: 'partial', start, end };
+}
+
 export function blockTextContent(blocks: { type: string; text?: string; file?: { name: string }; embed?: { title: string } }[]): string {
   return blocks
     .map((b) => {

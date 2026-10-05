@@ -44,7 +44,7 @@ export function loadSeed(name: 'chat' | 'tasks' | 'notes'): Seed {
 
 export async function startServer(
   partial: Partial<AppOptions> & { capabilities: Capabilities; providerId: string; seed?: Seed },
-): Promise<{ baseUrl: string; close: () => Promise<void> }> {
+): Promise<{ baseUrl: string; dataDir: string; close: () => Promise<void> }> {
   const dataDir = partial.dataDir ?? tempDataDir();
   const server = createApp({
     providerId: partial.providerId,
@@ -55,6 +55,7 @@ export async function startServer(
     seed: partial.seed,
     dataDir,
     publicOrigin: partial.publicOrigin ?? 'http://127.0.0.1:0',
+    maxFileBytes: partial.maxFileBytes,
   });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const addr = server.address();
@@ -62,6 +63,7 @@ export async function startServer(
   const baseUrl = `http://127.0.0.1:${port}`;
   return {
     baseUrl,
+    dataDir,
     close: () =>
       new Promise((resolve, reject) => {
         server.close((err) => (err ? reject(err) : resolve()));

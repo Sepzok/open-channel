@@ -1,13 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createApp } from '@open-channel/server';
+import { createApp, bindHost, originAfterListen } from '@open-channel/server';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT ?? 8782);
 const seed = JSON.parse(fs.readFileSync(path.join(dir, 'seed.json'), 'utf8'));
 
 const dataDir = process.env.DATA_DIR ?? path.join(dir, 'data');
+const host = bindHost();
 const options = {
   providerId: 'tasks',
   providerName: '示例任务',
@@ -27,9 +28,9 @@ const options = {
 };
 const server = createApp(options);
 
-server.listen(port, '127.0.0.1', () => {
+server.listen(port, host, () => {
   const addr = server.address();
   const p = typeof addr === 'object' && addr ? addr.port : port;
-  options.publicOrigin = `http://127.0.0.1:${p}`;
-  console.log(`tasks provider http://127.0.0.1:${p}`);
+  options.publicOrigin = originAfterListen(host, p);
+  console.log(`tasks provider ${options.publicOrigin}`);
 });

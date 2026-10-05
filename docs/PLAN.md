@@ -70,7 +70,7 @@ AGENTS.md
 - `seed`：见 SPEC 附录；仅当数据文件不存在时导入
 - `dataDir`：`store.json` 与 `files/` 放这里
 - `publicOrigin`：拼分享 URL，例如 `http://127.0.0.1:8781`
-- `maxFileBytes`：默认 `5 * 1024 * 1024`
+- `maxFileBytes`：默认 `64 * 1024 * 1024`
 
 存储是单文件 JSON，写时先写临时文件再重命名。幂等键只放内存，进程重启失效，SPEC 已说明。
 
@@ -106,7 +106,7 @@ Python 用同名 snake_case。查询参数、路径、请求体与 SPEC 相同�
 
 界面是浅色操作台，自定义按钮和输入框，不用浏览器默认外观。分区用通栏标题（正文、讨论、链接、修订、分享），不做成卡片堆。没有的能力不渲染该区。
 
-中文标签：私聊、群组、聊天室、项目、任务、笔记、正文、讨论、链接、修订、分享、发送、创建分享、恢复、来源不可用。
+中文标签：私聊、群组、聊天室、项目、任务、笔记、正文、讨论、链接、上级、下级、其它、修订、分享、发送、创建分享、恢复、来源不可用。
 
 ## 种子
 
@@ -129,11 +129,12 @@ Python 用同名 snake_case。查询参数、路径、请求体与 SPEC 相同�
 3. 笔记提供方：`base_revision` 不匹配时 409，`code` 为 `conflict`，频道正文保持原块；匹配时 `revision` 变成新 id，旧 id 仍能取回旧正文。种子「接口草案」的第一条修订正文含「频道是可寻址的容器，讨论附在频道上。」且不含「外部可打开的地址」；当前正文含后一句。锚点讨论能按 `anchor.block_id` 读回。`direction=in` 在「术语表」上能看到来自「接口草案」的链接。
 4. 分享：无 Authorization 的 `GET /s/:token`，`Accept: text/html` 正文包含频道标题；`Accept: application/json` 含 `channel` 与 `entries`，且没有 `revisions` 字段。撤销后再取，`code` 为 `share_unavailable`。`scope=view` 时 `POST /s/:token/entries` 为 403 `share_forbidden`。`scope=comment` 时该 POST 成功，作者 `display_name` 为「访客」。
 5. 幂等：同一 `Idempotency-Key` 与同一请求体返回同一个讨论 id；同一键不同体返回 409 `idempotency_conflict`。创建频道同样：同键同体返回同一个频道 id，不产生第二条。
-6. 文件：上传后的 id 放进 file 块，下载字节与上传一致；引用不存在的 file id 返回 400 `file_not_found`。笔记种子导入后，`GET /v1/files/file_terms` 的字节等于 `术语.txt` 的 UTF-8。分享 HTML 中，标题含 `<b>` 时响应里是转义后的文本，不是可解析的 `<b>` 标签。
+6. 文件：上传后的 id 放进 file 块，下载字节与上传一致；引用不存在的 file id 返回 400 `file_not_found`。笔记种子导入后，`GET /v1/files/file_terms` 的字节等于 `术语.txt` 的 UTF-8。分享 HTML 中，标题含 `<b>` 时响应里是转义后的文本，不是可解析的 `<b>` 标签。无 Range 为 200 且带 `Accept-Ranges: bytes`；`Range: bytes=0-3` 为 206 且正文 4 字节；越界为 416 `range_not_satisfiable`。超过 `maxFileBytes` 为 413，`files/` 无新正式 id、无 `.part`。
 7. 软删除：删除后默认列表不包含；`include_deleted=true` 且 `updated_since` 早于删除时间时能看到 `deleted_at`。对已删除频道发讨论返回 409 `deleted`。
 8. TypeScript SDK 与 Python SDK 各对运行中的笔记提供方执行：列表、更新正文（带正确 `base_revision`）、创建讨论（请求体不含 `author`、不含 `id`）。断言修订 id 已变化，讨论作者是令牌 actor。另发一条夹带 `author` 或 `id` 的创建请求，得到 400 `validation_error`，且讨论条数不增加。
 9. 融合聚合函数：把其中一个 `baseUrl` 指到未监听的端口时，响应仍包含另外两个提供方的频道，失败来源带「不可用」状态，而不是整次请求失败。
 10. 融合台页面：三个种子标题「发布小组」「首页文案」「接口草案」都可见；打开「接口草案」能看见种子正文中的句子；发送一条讨论后该句出现在讨论区；创建分享后页面出现含 `/s/` 的 URL。用本机 Chrome 真实点击和输入（`locator.click` / `locator.fill` / `locator.press`），不用改 DOM value 冒充。
+11. 链接 `type`：对 `ch_proj`，`direction=in&type=parent` 含 `ch_task_copy` 与 `ch_task_img`；`type=blocks` 不含它们。对 `ch_draft`，`direction=out&type=references` 指向术语表。无 `type` 时出边条数与加过滤前一致。
 
 SDK 的 `resolveShare` 发送 `Accept: application/json`。
 

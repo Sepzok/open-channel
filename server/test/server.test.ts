@@ -1,5 +1,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import {
   CHAT_CAPS,
   NOTES_CAPS,
@@ -361,5 +363,121 @@ describe('soft delete', () => {
     });
     assert.equal(post.status, 409);
     assert.equal((post.body as { code: string }).code, 'deleted');
+  });
+});
+
+describe('file range and size', () => {
+  let baseUrl: string;
+  let dataDir: string;
+  let close: () => Promise<void>;
+  let fileId: string;
+
+  before(async () => {
+    const s = await startServer({
+      providerId: 'tasks',
+      capabilities: TASKS_CAPS,
+      seed: loadSeed('tasks'),
+      maxFileBytes: 16,
+    });
+    baseUrl = s.baseUrl;
+    dataDir = s.dataDir;
+    close = s.close;
+    const up = await fetch(`${baseUrl}/v1/files`, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer demo-token',
+        'Content-Type': 'text/plain',
+        'X-File-Name': encodeURIComponent('r.txt'),
+      },
+      body: Buffer.from('abcdefghij'),
+    });
+    const meta = (await up.json()) as { id: string };
+    fileId = meta.id;
+  });
+
+  after(async () => {
+    await close();
+  });
+
+  it('full GET without Range is 200', async () => {
+    const down = await fetch(`${baseUrl}/v1/files/${fileId}`, { headers: { Authorization: 'Bearer demo-token' } });
+    assert.equal(down.status, 200);
+    assert.equal(down.headers.get('accept-ranges'), 'bytes');
+    assert.equal(Buffer.from(await down.arrayBuffer()).toString(), 'abcdefghij');
+  });
+
+  it('bytes=0-3 is 206', async () => {
+    const down = await fetch(`${baseUrl}/v1/files/${fileId}`, {
+      headers: { Authorization: 'Bearer demo-token', Range: 'bytes=0-3' },
+    });
+    assert.equal(down.status, 206);
+    assert.equal(Buffer.from(await down.arrayBuffer()).toString(), 'abcd');
+    assert.match(down.headers.get('content-range') ?? '', /bytes 0-3\/10/);
+  });
+
+  it('unsatisfiable range is 416', async () => {
+    const down = await fetch(`${baseUrl}/v1/files/${fileId}`, {
+      headers: { Authorization: 'Bearer demo-token', Range: 'bytes=999-' },
+    });
+    assert.equal(down.status, 416);
+    assert.equal((await down.json()).code, 'range_not_satisfiable');
+  });
+
+  it('oversize upload leaves no file id or part', async () => {
+    const namesBefore = new Set(fs.readdirSync(path.join(dataDir, 'files')));
+    const up = await fetch(`${baseUrl}/v1/files`, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer demo-token',
+        'Content-Type': 'text/plain',
+        'X-File-Name': encodeURIComponent('big.txt'),
+      },
+      body: Buffer.from('0123456789abcdef!'),
+    });
+    assert.equal(up.status, 413);
+    assert.equal((await up.json()).code, 'file_too_large');
+    const names = fs.readdirSync(path.join(dataDir, 'files'));
+    assert.equal(names.some((n) => n.endsWith('.part')), false);
+    const added = names.filter((n) => !namesBefore.has(n));
+    assert.equal(added.length, 0);
+  });
+});
+
+describe('link type filter', () => {
+  it('project inbound parent vs blocks', async () => {
+    const s = await startServer({ providerId: 'tasks', capabilities: TASKS_CAPS, seed: loadSeed('tasks') });
+    try {
+      const parent = (await httpJson(s.baseUrl, 'GET', '/v1/channels/ch_proj/links?direction=in&type=parent'))
+        .body as { data: { source_id: string }[] };
+      const ids = parent.data.map((l) => l.source_id).sort();
+      assert.deepEqual(ids, ['ch_task_copy', 'ch_task_img']);
+      const blocks = (await httpJson(s.baseUrl, 'GET', '/v1/channels/ch_proj/links?direction=in&type=blocks'))
+        .body as { data: unknown[] };
+      assert.equal(blocks.data.length, 0);
+      const allIn = (await httpJson(s.baseUrl, 'GET', '/v1/channels/ch_proj/links?direction=in')).body as {
+        data: unknown[];
+      };
+      assert.equal(allIn.data.length, 2);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it('note outbound references', async () => {
+    const s = await startServer({ providerId: 'notes', capabilities: NOTES_CAPS, seed: loadSeed('notes') });
+    try {
+      const refs = (await httpJson(s.baseUrl, 'GET', '/v1/channels/ch_draft/links?direction=out&type=references'))
+        .body as { data: { target_id: string }[] };
+      assert.equal(refs.data.length, 1);
+      assert.equal(refs.data[0]!.target_id, 'ch_glossary');
+      const none = (await httpJson(s.baseUrl, 'GET', '/v1/channels/ch_draft/links?type=parent')).body as {
+        data: unknown[];
+      };
+      assert.equal(none.data.length, 0);
+      const all = (await httpJson(s.baseUrl, 'GET', '/v1/channels/ch_draft/links')).body as { data: unknown[] };
+      assert.equal(all.data.length, 1);
+    } finally {
+      await s.close();
+    }
   });
 });

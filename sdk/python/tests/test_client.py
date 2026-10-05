@@ -88,6 +88,8 @@ class SdkPythonTest(unittest.TestCase):
         self.assertEqual(ctx.exception.code, "validation_error")
         after2 = client.list_entries("ch_glossary")
         self.assertEqual(len(after2["data"]), count_before + 1)
+        refs = client.list_links("ch_draft", type="references")
+        self.assertEqual(refs["data"][0]["target_id"], "ch_glossary")
 
 
 if __name__ == "__main__":

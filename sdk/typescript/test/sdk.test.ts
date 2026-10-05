@@ -61,5 +61,8 @@ describe('TypeScript SDK', () => {
     }
     const after = (await client.listEntries('ch_glossary')) as { data: unknown[] };
     assert.equal(after.data.length, countBefore + 1);
+
+    const refs = (await client.listLinks('ch_draft', { type: 'references' })) as { data: { target_id: string }[] };
+    assert.equal(refs.data[0]?.target_id, 'ch_glossary');
   });
 });

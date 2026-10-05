@@ -15,6 +15,7 @@ import {
   isResourceId,
   isTypeName,
   nowIso,
+  parseByteRange,
   parseJsonBody,
   sha256,
   titleValid,
@@ -23,13 +24,14 @@ import {
   wantsShareJson,
 } from './util.js';
 import { sharePageHtml } from './html.js';
+import type { FileMeta } from './types.js';
 
 type IdempotencyRecord = { hash: string; status: number; body: string };
 
 export function createApp(options: AppOptions): http.Server {
   const store = new Store(options);
   const idempotency = new Map<string, IdempotencyRecord>();
-  const maxFileBytes = options.maxFileBytes ?? 5 * 1024 * 1024;
+  const maxFileBytes = options.maxFileBytes ?? 64 * 1024 * 1024;
   let ready = store.init();
 
   function sendJson(res: ServerResponse, status: number, body: unknown, contentType = OCP_JSON): void {
@@ -43,9 +45,62 @@ export function createApp(options: AppOptions): http.Server {
     sendJson(res, status, body, isProblem ? PROBLEM_JSON : OCP_JSON);
   }
 
-  function sendProblem(res: ServerResponse, code: ProblemCode, extra?: Record<string, unknown>): void {
+  function sendProblem(
+    res: ServerResponse,
+    code: ProblemCode,
+    extra?: Record<string, unknown>,
+    headers?: Record<string, string>,
+  ): void {
     const p = problem(code, extra as Parameters<typeof problem>[1]);
-    sendJson(res, p.status, p, PROBLEM_JSON);
+    res.writeHead(p.status, { 'Content-Type': PROBLEM_JSON, ...headers });
+    res.end(JSON.stringify(p));
+  }
+
+  function sendStoredFile(req: IncomingMessage, res: ServerResponse, fileId: string): void {
+    const meta = store.data.files[fileId];
+    if (!meta) {
+      sendProblem(res, 'not_found');
+      return;
+    }
+    const filePath = path.join(store.filesDir, fileId);
+    const rangeHeader = req.headers.range;
+    const header = Array.isArray(rangeHeader) ? rangeHeader[0] : rangeHeader;
+    const parsed = parseByteRange(header, meta.size);
+    if (parsed.kind === 'invalid') {
+      sendProblem(res, 'validation_error');
+      return;
+    }
+    if (parsed.kind === 'unsatisfiable') {
+      sendProblem(res, 'range_not_satisfiable', undefined, {
+        'Accept-Ranges': 'bytes',
+        'Content-Range': `bytes */${meta.size}`,
+      });
+      return;
+    }
+    const start = parsed.kind === 'all' ? 0 : parsed.start;
+    const end = parsed.kind === 'all' ? Math.max(0, meta.size - 1) : parsed.end;
+    const length = meta.size === 0 ? 0 : end - start + 1;
+    const status = parsed.kind === 'all' ? 200 : 206;
+    const headers: Record<string, string> = {
+      'Content-Type': meta.media_type,
+      'X-File-Name': encodeURIComponent(meta.name),
+      'Accept-Ranges': 'bytes',
+      'Content-Length': String(length),
+    };
+    if (status === 206) {
+      headers['Content-Range'] = `bytes ${start}-${end}/${meta.size}`;
+    }
+    if (req.method === 'HEAD' || length === 0) {
+      res.writeHead(status, headers);
+      res.end();
+      return;
+    }
+    res.writeHead(status, headers);
+    const stream = fs.createReadStream(filePath, { start, end });
+    stream.on('error', () => {
+      res.destroy();
+    });
+    stream.pipe(res);
   }
 
   function checkVersion(req: IncomingMessage, res: ServerResponse): boolean {
@@ -289,23 +344,13 @@ export function createApp(options: AppOptions): http.Server {
           return;
         }
 
-        if (method === 'GET' && sub?.startsWith('/files/')) {
+        if ((method === 'GET' || method === 'HEAD') && sub?.startsWith('/files/')) {
           const fileId = shareMatch[3]!;
           if (!channelReferencesFile(ch.id, fileId)) {
             sendProblem(res, 'not_found');
             return;
           }
-          const meta = store.data.files[fileId];
-          if (!meta) {
-            sendProblem(res, 'not_found');
-            return;
-          }
-          const bytes = fs.readFileSync(path.join(store.filesDir, fileId));
-          res.writeHead(200, {
-            'Content-Type': meta.media_type,
-            'X-File-Name': encodeURIComponent(meta.name),
-          });
-          res.end(bytes);
+          sendStoredFile(req, res, fileId);
           return;
         }
 
@@ -367,39 +412,62 @@ export function createApp(options: AppOptions): http.Server {
 
       // Files
       if (pathname === '/v1/files' && method === 'POST') {
-        const buf = await readBody(req);
-        if (buf.length > maxFileBytes) {
-          sendProblem(res, 'file_too_large');
-          return;
-        }
         const nameHeader = req.headers['x-file-name'];
         const name = nameHeader ? decodeURIComponent(String(nameHeader)) : 'file';
-        const mediaType = req.headers['content-type'] ?? 'application/octet-stream';
-        const result = await store.runExclusive(() => {
-          const id = genId('file');
-          const meta = { id, name, media_type: String(mediaType), size: buf.length };
-          store.data.files[id] = meta;
-          fs.writeFileSync(path.join(store.filesDir, id), buf);
-          store.persistSync();
-          return meta;
-        });
-        sendJson(res, 201, result);
+        const mediaType = String(req.headers['content-type'] ?? 'application/octet-stream');
+        const id = genId('file');
+        const partPath = path.join(store.filesDir, `${id}.part`);
+        const destPath = path.join(store.filesDir, id);
+        const ws = fs.createWriteStream(partPath);
+        let received = 0;
+        let tooLarge = false;
+        try {
+          for await (const chunk of req) {
+            if (tooLarge) continue;
+            const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+            received += buf.length;
+            if (received > maxFileBytes) {
+              tooLarge = true;
+              continue;
+            }
+            if (!ws.write(buf)) {
+              await new Promise<void>((resolve, reject) => {
+                ws.once('drain', resolve);
+                ws.once('error', reject);
+              });
+            }
+          }
+          await new Promise<void>((resolve, reject) => {
+            ws.end((err?: Error | null) => (err ? reject(err) : resolve()));
+          });
+          if (tooLarge) {
+            fs.rmSync(partPath, { force: true });
+            sendProblem(res, 'file_too_large');
+            return;
+          }
+          const meta: FileMeta = { id, name, media_type: mediaType, size: received };
+          await store.runExclusive(() => {
+            fs.renameSync(partPath, destPath);
+            store.data.files[id] = meta;
+            store.persistSync();
+          });
+          sendJson(res, 201, meta);
+        } catch (err) {
+          try {
+            ws.destroy();
+          } catch {
+            /* ignore */
+          }
+          fs.rmSync(partPath, { force: true });
+          console.error(err);
+          sendProblem(res, 'validation_error');
+        }
         return;
       }
 
       const fileGet = pathname.match(/^\/v1\/files\/([^/]+)$/);
-      if (fileGet && method === 'GET') {
-        const meta = store.data.files[fileGet[1]!];
-        if (!meta) {
-          sendProblem(res, 'not_found');
-          return;
-        }
-        const bytes = fs.readFileSync(path.join(store.filesDir, fileGet[1]!));
-        res.writeHead(200, {
-          'Content-Type': meta.media_type,
-          'X-File-Name': encodeURIComponent(meta.name),
-        });
-        res.end(bytes);
+      if (fileGet && (method === 'GET' || method === 'HEAD')) {
+        sendStoredFile(req, res, fileGet[1]!);
         return;
       }
 
@@ -713,6 +781,14 @@ export function createApp(options: AppOptions): http.Server {
           } else {
             items = items.filter((l) => l.source_id === chId || l.target_id === chId);
           }
+          const typeFilter = url.searchParams.get('type');
+          if (typeFilter) {
+            if (!isTypeName(typeFilter)) {
+              sendProblem(res, 'validation_error', { errors: [{ path: 'type', message: 'invalid' }] });
+              return;
+            }
+            items = items.filter((l) => l.type === typeFilter);
+          }
           items.sort((a, b) => a.id.localeCompare(b.id));
           const limitRaw = url.searchParams.get('limit');
           let limit = limitRaw ? parseInt(limitRaw, 10) : 50;
@@ -927,3 +1003,5 @@ export function createApp(options: AppOptions): http.Server {
 }
 
 export type { AppOptions, Capabilities, Seed } from './types.js';
+export { bindHost, firstLanIPv4, originAfterListen } from './listen.js';
+export { parseByteRange } from './util.js';

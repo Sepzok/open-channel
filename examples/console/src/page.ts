@@ -27,6 +27,7 @@ export function renderPage(): string {
   button, .btn { appearance: none; font: inherit; border-radius: 6px; padding: 8px 14px; border: 1px solid #1d4e89; background: #1d4e89; color: #fff; cursor: pointer; }
   button.secondary { background: #fff; color: #1d4e89; }
   .link-row { padding: 4px 0; font-size: 0.875rem; }
+  .link-group { font-size: 0.75rem; color: #5c6370; margin: 8px 0 4px; }
   .empty { color: #8b919a; padding: 24px 16px; }
   .share-url { word-break: break-all; margin-top: 8px; font-size: 0.875rem; }
   .rev-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-top: 1px solid #f0f1f3; font-size: 0.875rem; }
@@ -114,12 +115,25 @@ function renderDetail() {
     html += '<div class="entry-compose"><textarea id="entry-text" placeholder="写下讨论"></textarea><button type="button" id="send-entry">发送</button></div></div>';
   }
   if (caps.links) {
+    const out = detail.links?.data || detail.links || [];
+    const children = detail.linksInParent?.data || [];
+    const parents = out.filter((l) => l.type === 'parent');
+    const others = out.filter((l) => l.type !== 'parent');
+    const hasAny = parents.length || children.length || others.length;
     html += '<div class="section-band">链接</div><div class="section-body">';
-    const links = detail.links?.data || detail.links || [];
-    if (!links.length) html += '<div class="empty">暂无链接</div>';
-    links.forEach((l) => {
-      html += '<div class="link-row">' + escapeHtml(l.title || l.type) + '</div>';
-    });
+    if (!hasAny) html += '<div class="empty">暂无链接</div>';
+    function rows(items, pick) {
+      return items.map((l) => '<div class="link-row">' + escapeHtml(pick(l)) + '</div>').join('');
+    }
+    if (parents.length) {
+      html += '<div class="link-group">上级</div>' + rows(parents, (l) => l.title || l.target_id || l.type);
+    }
+    if (children.length) {
+      html += '<div class="link-group">下级</div>' + rows(children, (l) => l.label || l.title || l.source_id);
+    }
+    if (others.length) {
+      html += '<div class="link-group">其它</div>' + rows(others, (l) => l.title || l.type);
+    }
     html += '</div>';
   }
   if (caps.revisions && detail.revisions) {
