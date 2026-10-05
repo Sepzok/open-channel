@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open Channel Protocol</title>
+<meta name="description" content="OCP 本地参考实现。源码 MIT 公开；在本机运行例子，不提供公网服务。">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Songti SC", serif;
+    color: #15202b;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, #d9e7f5 0%, transparent 55%),
+      radial-gradient(900px 500px at 100% 0%, #e7f0e8 0%, transparent 50%),
+      #f3f6f8;
+  }
+  header, main { max-width: 40rem; margin: 0 auto; padding: 0 1.5rem; }
+  header { display: flex; justify-content: space-between; align-items: flex-start; padding-top: 2.5rem; }
+  .brand { font-size: clamp(1.75rem, 5vw, 2.4rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.15; }
+  .lang-switch { display: flex; gap: 6px; }
+  .lang-switch button {
+    appearance: none; font: inherit; font-family: system-ui, sans-serif; font-size: 0.875rem;
+    border-radius: 8px; padding: 6px 12px; border: 1px solid #b8c2ce;
+    background: rgba(255,255,255,0.85); color: #15202b; cursor: pointer;
+  }
+  .lang-switch button.active { border-color: #1d4e89; background: #1d4e89; color: #fff; }
+  h1 { font-family: system-ui, sans-serif; font-size: 1.15rem; font-weight: 600; margin: 1.5rem 0 0.6rem; }
+  p, li { font-family: system-ui, sans-serif; line-height: 1.55; color: #3f4a57; }
+  .links { display: flex; flex-wrap: wrap; gap: 10px; margin: 1.5rem 0 3rem; }
+  .links a {
+    font-family: system-ui, sans-serif; text-decoration: none; color: #1d4e89;
+    border: 1px solid #c5d0dd; background: #fff; border-radius: 10px; padding: 8px 14px; font-weight: 600;
+  }
+  pre {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.85rem; background: #fff; border: 1px solid #d5dee8; border-radius: 10px;
+    padding: 12px 14px; overflow: auto; color: #15202b;
+  }
+  .note { font-size: 0.9rem; color: #5c6370; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Open Channel</div>
+  <div class="lang-switch" role="group" aria-label="Language">
+    <button type="button" id="lang-zh" class="active">中文</button>
+    <button type="button" id="lang-en">English</button>
+  </div>
+</header>
+<main>
+  <h1 id="headline">本地协议参考实现</h1>
+  <p id="lead">用同一套资源描述单个提供方上的频道、讨论、链接、分享与修订。本页只介绍仓库；例子在本机运行，不在这里提供公网服务。</p>
+  <div class="links">
+    <a id="src" href="https://github.com/Sepzok/open-channel">源码</a>
+    <a id="spec" href="https://github.com/Sepzok/open-channel/blob/main/docs/SPEC.md">协议正文</a>
+    <a id="lic" href="https://github.com/Sepzok/open-channel/blob/main/LICENSE">MIT 许可</a>
+  </div>
+  <pre id="cmd">git clone https://github.com/Sepzok/open-channel.git
+cd open-channel
+npm install
+npm run dev</pre>
+  <p class="note" id="local">浏览器打开 http://127.0.0.1:8779 。样例令牌只用于本机回环。</p>
+</main>
+<script>
+const COPY = {
+  zh: {
+    htmlLang: 'zh-CN', headline: '本地协议参考实现',
+    lead: '用同一套资源描述单个提供方上的频道、讨论、链接、分享与修订。本页只介绍仓库；例子在本机运行，不在这里提供公网服务。',
+    src: '源码', spec: '协议正文', lic: 'MIT 许可',
+    local: '浏览器打开 http://127.0.0.1:8779 。样例令牌只用于本机回环。'
+  },
+  en: {
+    htmlLang: 'en', headline: 'Local protocol reference',
+    lead: 'One resource model for channels, discussion, links, shares, and revisions on a single provider. This page describes the repo; run the examples on your machine—there is no hosted service here.',
+    src: 'Source', spec: 'Specification', lic: 'MIT license',
+    local: 'Open http://127.0.0.1:8779 in a browser. Sample credentials are for loopback only.'
+  }
+};
+function apply(locale) {
+  const t = COPY[locale];
+  document.documentElement.lang = t.htmlLang;
+  document.getElementById('headline').textContent = t.headline;
+  document.getElementById('lead').textContent = t.lead;
+  document.getElementById('src').textContent = t.src;
+  document.getElementById('spec').textContent = t.spec;
+  document.getElementById('lic').textContent = t.lic;
+  document.getElementById('local').textContent = t.local;
+  document.getElementById('lang-zh').classList.toggle('active', locale === 'zh');
+  document.getElementById('lang-en').classList.toggle('active', locale === 'en');
+  const spec = document.getElementById('spec');
+  spec.href = locale === 'en'
+    ? 'https://github.com/Sepzok/open-channel/blob/main/docs/en/SPEC.md'
+    : 'https://github.com/Sepzok/open-channel/blob/main/docs/SPEC.md';
+}
+document.getElementById('lang-zh').onclick = () => apply('zh');
+document.getElementById('lang-en').onclick = () => apply('en');
+</script>
+</body>
+</html>

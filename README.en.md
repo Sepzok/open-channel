@@ -4,7 +4,7 @@
 
 Open Channel Protocol (OCP) describes channels, discussion, links, shares, and revisions on a **single provider** with one resource model. Aggregating providers is a client concern (this repo’s fusion console is one example).
 
-This repository is a locally runnable reference implementation and examples, published under the MIT license. It does not run `npm publish`, upload to PyPI, or deploy a public service.
+This repository is a locally runnable reference implementation and examples, published under the MIT license. It does not run `npm publish`, upload to PyPI, or deploy a public service. Landing page: https://sepzok.github.io/open-channel/ .
 
 ## Start
 

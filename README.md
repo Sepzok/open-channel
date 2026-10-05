@@ -4,7 +4,7 @@
 
 Open Channel Protocol（OCP）用统一的资源模型描述**单个提供方**上的频道、讨论、链接、分享与修订。跨提供方的汇合由客户端完成（本仓库的融合台即一例）。
 
-本仓库为本地可运行的协议参考实现与示例，以 MIT 许可证公开源码。不执行 `npm publish`，不向 PyPI 上传，不部署公网服务。
+本仓库为本地可运行的协议参考实现与示例，以 MIT 许可证公开源码。不执行 `npm publish`，不向 PyPI 上传，不部署公网服务。介绍页：https://sepzok.github.io/open-channel/ 。
 
 ## 启动
 
