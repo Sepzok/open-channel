@@ -115,6 +115,46 @@ const EN: UiMessages = {
 
 export const UI_MESSAGES: Record<Locale, UiMessages> = { zh: ZH, en: EN };
 
+/** Seed channel titles stay Chinese on disk; UI shows these when locale is en. */
+export const SEED_CHANNEL_TITLES: Record<string, { zh: string; en: string }> = {
+  ch_dm_lin_zhou: { zh: '林可、周宁', en: 'Lin Ke, Zhou Ning' },
+  ch_grp_release: { zh: '发布小组', en: 'Release team' },
+  ch_room_design: { zh: '设计讨论', en: 'Design discussion' },
+  ch_proj: { zh: '官网改版', en: 'Site redesign' },
+  ch_task_copy: { zh: '首页文案', en: 'Home page copy' },
+  ch_task_img: { zh: '配图导出', en: 'Export art' },
+  ch_draft: { zh: '接口草案', en: 'API draft' },
+  ch_glossary: { zh: '术语表', en: 'Glossary' },
+  ch_walk: { zh: '走动房间', en: 'Walk room' },
+};
+
+export function displayChannelTitle(
+  channelId: string,
+  fallbackTitle: string,
+  locale: Locale,
+): string {
+  if (locale === 'zh') return fallbackTitle;
+  const byId = SEED_CHANNEL_TITLES[channelId];
+  if (byId) return byId.en;
+  for (const row of Object.values(SEED_CHANNEL_TITLES)) {
+    if (row.zh === fallbackTitle) return row.en;
+  }
+  return fallbackTitle;
+}
+
+/** Map UI filter text to Chinese title needles for provider `title co` (seeds stay Chinese). */
+export function titleFilterNeedles(q: string, locale: Locale): string[] {
+  const trimmed = q.trim();
+  if (!trimmed) return [];
+  if (locale !== 'en') return [trimmed];
+  const lower = trimmed.toLowerCase();
+  const hits = Object.values(SEED_CHANNEL_TITLES).filter(
+    (row) => row.en.toLowerCase().includes(lower) || row.zh.includes(trimmed),
+  );
+  if (hits.length === 0) return [trimmed];
+  return [...new Set(hits.map((row) => row.zh))];
+}
+
 export function parseLangParam(raw: string | null | undefined): Locale | null {
   if (!raw) return null;
   const v = raw.trim().toLowerCase();

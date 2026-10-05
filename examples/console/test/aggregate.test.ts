@@ -63,6 +63,20 @@ describe('aggregateChannels', () => {
     assert.ok(tasksRow);
   });
 
+  it('maps English filter needles to Chinese seed titles', async () => {
+    const result = await aggregateChannels(
+      [
+        { id: 'chat', name: '示例会话', baseUrl: chatUrl, token: 'demo-token' },
+        { id: 'tasks', name: '示例任务', baseUrl: 'http://127.0.0.1:1', token: 'demo-token' },
+        { id: 'notes', name: '示例笔记', baseUrl: notesUrl, token: 'demo-token' },
+      ],
+      { q: 'API', locale: 'en' },
+    );
+    const titles = result.channels.filter((c) => c.providerAvailable).map((c) => c.channel.title);
+    assert.ok(titles.includes('接口草案'));
+    assert.equal(titles.includes('发布小组'), false);
+  });
+
   it('builds target_url for another provider and target_id for the same', () => {
     const notes = { id: 'notes', name: '示例笔记', baseUrl: notesUrl, token: 'demo-token' };
     const tasks = { id: 'tasks', name: '示例任务', baseUrl: 'http://127.0.0.1:8782', token: 'demo-token' };

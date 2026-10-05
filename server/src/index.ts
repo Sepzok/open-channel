@@ -1409,6 +1409,9 @@ export {
   resolveLocale,
   messagesFor,
   UI_MESSAGES,
+  SEED_CHANNEL_TITLES,
+  displayChannelTitle,
+  titleFilterNeedles,
   type Locale,
   type UiMessages,
 } from './uiLocale.js';

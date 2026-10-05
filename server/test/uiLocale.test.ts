@@ -5,6 +5,8 @@ import {
   parseLangParam,
   resolveLocale,
   messagesFor,
+  displayChannelTitle,
+  titleFilterNeedles,
 } from '../src/uiLocale.js';
 
 describe('resolveLocale', () => {
@@ -61,5 +63,20 @@ describe('resolveLocale', () => {
     assert.equal(messagesFor('en').createShare, 'Create share');
     assert.equal(messagesFor('zh').send, '发送');
     assert.equal(messagesFor('zh').createShare, '创建分享');
+  });
+
+  it('displayChannelTitle maps seed ids for English', () => {
+    assert.equal(displayChannelTitle('ch_grp_release', '发布小组', 'zh'), '发布小组');
+    assert.equal(displayChannelTitle('ch_grp_release', '发布小组', 'en'), 'Release team');
+    assert.equal(displayChannelTitle('ch_draft', '接口草案', 'en'), 'API draft');
+    assert.equal(displayChannelTitle('', '首页文案', 'en'), 'Home page copy');
+    assert.equal(displayChannelTitle('ch_custom', '自定义', 'en'), '自定义');
+  });
+
+  it('titleFilterNeedles maps English UI filter to Chinese seed titles', () => {
+    assert.deepEqual(titleFilterNeedles('首页', 'zh'), ['首页']);
+    assert.deepEqual(titleFilterNeedles('Home', 'en'), ['首页文案']);
+    assert.deepEqual(titleFilterNeedles('API', 'en'), ['接口草案']);
+    assert.deepEqual(titleFilterNeedles('unknown-x', 'en'), ['unknown-x']);
   });
 });

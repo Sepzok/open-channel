@@ -64,4 +64,4 @@ Adapting an existing product and linking multiple servers: [docs/ADAPT.md](docs/
 
 License: `LICENSE` (MIT). Contributing: [CONTRIBUTING.md](CONTRIBUTING.md) / [CONTRIBUTING.en.md](CONTRIBUTING.en.md). Agent rules: [AGENTS.md](AGENTS.md) / [AGENTS.en.md](AGENTS.en.md).
 
-UI language: fusion console and share HTML support `zh` / `en` (`?lang=`, `Accept-Language`, console switcher). Seed channel titles stay Chinese sample data.
+UI language: fusion console and share HTML support `zh` / `en` (`?lang=`, `Accept-Language`, console switcher). Seed titles stay Chinese on disk; the English locale shows translated labels by channel id.

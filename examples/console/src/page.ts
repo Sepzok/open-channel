@@ -1,7 +1,8 @@
-import { UI_MESSAGES, type Locale } from '../../../server/src/uiLocale.js';
+import { SEED_CHANNEL_TITLES, UI_MESSAGES, type Locale } from '../../../server/src/uiLocale.js';
 
 export function renderPage(locale: Locale = 'zh'): string {
   const messagesJson = JSON.stringify(UI_MESSAGES).replace(/</g, '\\u003c');
+  const seedTitlesJson = JSON.stringify(SEED_CHANNEL_TITLES).replace(/</g, '\\u003c');
   const initial = JSON.stringify(locale);
   return `<!DOCTYPE html>
 <html lang="${locale === 'en' ? 'en' : 'zh-CN'}">
@@ -63,6 +64,7 @@ export function renderPage(locale: Locale = 'zh'): string {
 </div>
 <script>
 const MESSAGES = ${messagesJson};
+const SEED_TITLES = ${seedTitlesJson};
 const STORAGE_KEY = 'ocp-console-lang';
 let locale = ${initial};
 try {
@@ -78,6 +80,15 @@ let t = MESSAGES[locale];
 let channels = [];
 let selected = null;
 let detail = null;
+
+function displayChannelTitle(id, fallback) {
+  if (locale === 'zh') return fallback;
+  if (id && SEED_TITLES[id]) return SEED_TITLES[id].en;
+  for (const row of Object.values(SEED_TITLES)) {
+    if (row.zh === fallback) return row.en;
+  }
+  return fallback;
+}
 
 function applyChrome() {
   t = MESSAGES[locale];
@@ -110,7 +121,10 @@ function setLocale(next) {
 
 async function loadChannels() {
   const q = (document.getElementById('channel-filter')?.value || '').trim();
-  const res = await fetch('/api/channels' + (q ? '?q=' + encodeURIComponent(q) : ''));
+  const params = new URLSearchParams();
+  params.set('lang', locale);
+  if (q) params.set('q', q);
+  const res = await fetch('/api/channels?' + params.toString());
   const data = await res.json();
   channels = data.channels || [];
   renderList();
@@ -128,9 +142,10 @@ function renderList() {
         escapeHtml(t.sourceUnavailable) + '</div></div>';
     }
     const label = t.typeLabels[row.channel.type] || row.channel.type;
+    const title = displayChannelTitle(row.channel.id, row.channel.title);
     const active = selected && selected.providerId === row.providerId && selected.channelId === row.channel.id ? ' active' : '';
     return '<button type="button" class="channel-item' + active + '" data-provider="' + row.providerId + '" data-id="' + row.channel.id + '">' +
-      '<div>' + escapeHtml(row.channel.title) + '</div>' +
+      '<div>' + escapeHtml(title) + '</div>' +
       '<div class="channel-meta">' + escapeHtml(row.providerName) + ' · ' + label + '</div></button>';
   }).join('');
   el.querySelectorAll('.channel-item[data-provider]').forEach((btn) => {
@@ -157,6 +172,10 @@ function blockText(blocks) {
     if (b.type === 'embed') return b.title || b.embed?.title || '';
     return '';
   }).filter(Boolean).join('\\n');
+}
+
+function linkLabel(text, channelId) {
+  return displayChannelTitle(channelId || '', text || '');
 }
 
 function renderDetail() {
@@ -203,18 +222,18 @@ function renderDetail() {
           escapeHtml(l.resolved.providerId) + '" data-id="' + escapeHtml(l.resolved.channelId) + '">' + text + '</button></div>';
       }
       if (l.target_url) {
-        return '<div class="link-row">' + escapeHtml(l.title || l.target_url) + '</div>';
+        return '<div class="link-row">' + escapeHtml(linkLabel(l.title || l.target_url, l.resolved?.channelId)) + '</div>';
       }
       return '<div class="link-row">' + text + '</div>';
     }
     if (parents.length) {
-      html += '<div class="link-group">' + escapeHtml(t.parents) + '</div>' + parents.map((l) => linkRow(l, (x) => x.title || x.target_id || x.type)).join('');
+      html += '<div class="link-group">' + escapeHtml(t.parents) + '</div>' + parents.map((l) => linkRow(l, (x) => linkLabel(x.title || x.target_id || x.type, x.target_id || x.resolved?.channelId))).join('');
     }
     if (children.length) {
-      html += '<div class="link-group">' + escapeHtml(t.children) + '</div>' + children.map((l) => linkRow(l, (x) => x.label || x.title || x.source_id)).join('');
+      html += '<div class="link-group">' + escapeHtml(t.children) + '</div>' + children.map((l) => linkRow(l, (x) => linkLabel(x.label || x.title || x.source_id, x.source_id || x.resolved?.channelId))).join('');
     }
     if (others.length) {
-      html += '<div class="link-group">' + escapeHtml(t.others) + '</div>' + others.map((l) => linkRow(l, (x) => x.title || x.type)).join('');
+      html += '<div class="link-group">' + escapeHtml(t.others) + '</div>' + others.map((l) => linkRow(l, (x) => linkLabel(x.title || x.type, x.target_id || x.resolved?.channelId))).join('');
     }
     html += '<button type="button" class="secondary" id="associate-open">' + escapeHtml(t.associate) + '</button>';
     html += '<div id="associate-panel" hidden></div>';
@@ -245,8 +264,9 @@ function renderDetail() {
 }
 
 async function sendEntry() {
+  if (!selected) return;
   const text = document.getElementById('entry-text').value.trim();
-  if (!text || !selected) return;
+  if (!text) return;
   await fetch('/api/channels/' + selected.providerId + '/' + selected.channelId + '/entries', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -265,21 +285,21 @@ async function associateTo(providerId, channelId, title) {
   await openChannel(selected.providerId, selected.channelId);
 }
 
-function openAssociate() {
+async function openAssociate() {
   const panel = document.getElementById('associate-panel');
-  if (!panel || !selected) return;
-  const choices = channels.filter((row) => row.providerAvailable && !(row.providerId === selected.providerId && row.channel.id === selected.channelId));
-  if (!choices.length) {
-    panel.hidden = false;
+  if (!panel) return;
+  panel.hidden = false;
+  const candidates = channels.filter((row) => row.providerAvailable && row.channel.type !== 'unavailable' &&
+    !(selected && row.providerId === selected.providerId && row.channel.id === selected.channelId));
+  if (!candidates.length) {
     panel.innerHTML = '<div class="empty">' + escapeHtml(t.noAssociate) + '</div>';
     return;
   }
-  panel.hidden = false;
-  panel.innerHTML = choices.map((row) => {
-    const label = t.typeLabels[row.channel.type] || row.channel.type;
+  panel.innerHTML = candidates.map((row) => {
+    const title = displayChannelTitle(row.channel.id, row.channel.title);
     return '<button type="button" class="channel-item" data-provider="' + row.providerId + '" data-id="' + row.channel.id + '" data-title="' + encodeURIComponent(row.channel.title) + '">' +
-      '<div>' + escapeHtml(row.channel.title) + '</div>' +
-      '<div class="channel-meta">' + escapeHtml(row.providerName) + ' · ' + label + '</div></button>';
+      '<div>' + escapeHtml(title) + '</div>' +
+      '<div class="channel-meta">' + escapeHtml(row.providerName) + '</div></button>';
   }).join('');
   panel.querySelectorAll('.channel-item').forEach((btn) => {
     btn.addEventListener('click', () => associateTo(btn.dataset.provider, btn.dataset.id, decodeURIComponent(btn.dataset.title)));
@@ -290,7 +310,8 @@ async function createShare() {
   if (!selected) return;
   const res = await fetch('/api/channels/' + selected.providerId + '/' + selected.channelId + '/shares', { method: 'POST' });
   const data = await res.json();
-  document.getElementById('share-url').textContent = data.url || '';
+  const el = document.getElementById('share-url');
+  if (el) el.textContent = data.url || '';
 }
 
 async function restoreRev(revId) {

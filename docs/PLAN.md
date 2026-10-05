@@ -143,7 +143,7 @@ Python 用同名 snake_case。查询参数、路径、请求体与 SPEC 相同�
 | 关联 | Link |
 | 来源不可用 | Source unavailable |
 
-界面按当前 locale（`?lang=`、`Accept-Language`、融合台切换器）。种子频道标题仍是中文样例数据，不翻译。
+界面按当前 locale（`?lang=`、`Accept-Language`、融合台切换器）。`seed.json` 与 SPEC 附录里的频道标题仍是中文落盘；融合台与分享页在 `en` 下按频道 id 显示英译标题（如 Release team / Home page copy / API draft）。正文与讨论样例不翻译。英文筛选把输入映射到中文 `title co`（如 Home → 首页文案）。
 
 ## 种子
 
@@ -176,7 +176,7 @@ Python 用同名 snake_case。查询参数、路径、请求体与 SPEC 相同�
 
 13. 跨提供方关联与独立适配：`parseChannelResourceUrl('https://example.com/spec')` 为 `null`；`http://127.0.0.1:9/v1/channels/ch_proj` 解析出 origin 与 `ch_proj`。对笔记 `ch_draft` `POST` `type=references` 且 `target_url` 为任务提供方的频道资源 URL，随后 `GET` 该链接仍是 `target_url`、没有 `target_id`。`ftp://x` 创建链接为 400。融合台打开「接口草案」，点「关联」选「首页文案」，「其它」出现该标题；刷新后再打开仍在；点它进入任务提供方频道且可见「撰写中」。`examples/native` 源码不含 `createApp` 与 `@open-channel/server`；`GET /v1` 的 capabilities 与频道 `ext.native_id` 能读回；对 native 与 notes 都跑同一套发现 + 链接形状黑盒。native 未声明的修订（含嵌套 id 与 restore）、PATCH 正文、分享集合不得返回 `{ data: [] }`；`parent_id` 为 `threads_unsupported`；列表 `filter` 为 400 不是未筛选 200；`GET /s/{token}` 为 `share_unavailable`。
 
-14. **双语界面**：默认路径仍为中文（现有断言不变）。`?lang=en`（或分享页 `Accept-Language: en`）时壳文案为英文（如 Send / Create share）。`resolveLocale` 优先 `?lang=`，再存档 locale（浏览器），再 `Accept-Language`，默认 `zh`。不可用聚合行使用稳定类型（如 `unavailable`）与空标题，由页面按 locale 渲染「来源不可用 / Source unavailable」——聚合载荷不得写死中文标题。
+14. **双语界面**：默认路径仍为中文（现有断言不变）。`?lang=en`（或分享页 `Accept-Language: en`）时壳文案为英文（如 Send / Create share），种子频道标题显示英译（如 Release team、API draft）；`seed.json` 仍为中文。`resolveLocale` 优先 `?lang=`，再存档 locale（浏览器），再 `Accept-Language`，默认 `zh`。不可用聚合行使用稳定类型（如 `unavailable`）与空标题，由页面按 locale 渲染「来源不可用 / Source unavailable」——聚合载荷不得写死中文标题。英文筛选「Home」应命中「首页文案」对应频道。
 
 SDK 的 `resolveShare` 发送 `Accept: application/json`。
 

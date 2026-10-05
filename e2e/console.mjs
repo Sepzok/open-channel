@@ -112,11 +112,14 @@ async function main() {
     await page.getByText('撰写中').waitFor();
 
     await page.goto(`${base}?lang=en`);
-    await page.getByRole('button', { name: '发布小组' }).waitFor();
-    await page.getByRole('button', { name: '接口草案' }).click();
+    await page.getByRole('button', { name: 'Release team' }).waitFor();
+    await page.getByRole('button', { name: 'API draft' }).click();
     await page.getByRole('button', { name: 'Send' }).waitFor();
     await page.getByRole('button', { name: 'Create share' }).waitFor();
-    await page.getByLabel('Filter channels').waitFor();
+    await page.getByLabel('Filter channels').fill('Home');
+    await page.getByLabel('Filter channels').press('Enter');
+    await page.locator('#channel-list').getByRole('button', { name: /Home page copy/ }).waitFor();
+    await page.locator('#channel-list').getByRole('button', { name: /Release team/ }).waitFor({ state: 'hidden' });
 
     console.log('e2e: ok');
   } finally {

@@ -66,7 +66,16 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && url.pathname === '/api/channels') {
-      const data = await aggregateChannels(providers, { q: url.searchParams.get('q') ?? undefined });
+      const locale = resolveLocale({
+        queryLang: url.searchParams.get('lang'),
+        acceptLanguage: Array.isArray(req.headers['accept-language'])
+          ? req.headers['accept-language'][0]
+          : req.headers['accept-language'],
+      });
+      const data = await aggregateChannels(providers, {
+        q: url.searchParams.get('q') ?? undefined,
+        locale,
+      });
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(data));
       return;

@@ -1,4 +1,5 @@
 import { scimContains } from '../../../server/src/scimFilter.js';
+import { titleFilterNeedles, type Locale } from '../../../server/src/uiLocale.js';
 import { channelResourceUrl, matchProvider } from '@open-channel/sdk';
 
 export type ProviderConfig = {
@@ -45,10 +46,16 @@ async function fetchJson(
 
 export async function aggregateChannels(
   providers: ProviderConfig[],
-  opts?: { q?: string },
+  opts?: { q?: string; locale?: Locale },
 ): Promise<AggregatedChannels> {
-  const q = opts?.q?.trim() ?? '';
-  const filter = q ? scimContains('title', q) : undefined;
+  const locale = opts?.locale ?? 'zh';
+  const needles = titleFilterNeedles(opts?.q ?? '', locale);
+  let filter: string | undefined;
+  if (needles.length === 1) {
+    filter = scimContains('title', needles[0]!);
+  } else if (needles.length > 1) {
+    filter = '(' + needles.map((n) => scimContains('title', n)).join(' or ') + ')';
+  }
   const channels: ChannelRow[] = [];
   for (const p of providers) {
     const result = await fetchJson(p.baseUrl, p.token, filter);

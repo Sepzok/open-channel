@@ -1,6 +1,6 @@
 import type { Block, Channel, Entry, Share } from './types.js';
 import { blockTextContent, escapeHtml } from './util.js';
-import { messagesFor, type Locale } from './uiLocale.js';
+import { displayChannelTitle, messagesFor, type Locale } from './uiLocale.js';
 
 function renderBlocks(blocks: Block[], shareToken: string, publicOrigin: string): string {
   return blocks
@@ -28,7 +28,9 @@ export function sharePageHtml(opts: {
   locale?: Locale;
 }): string {
   const { channel, entries, share, publicOrigin } = opts;
-  const t = messagesFor(opts.locale ?? 'zh');
+  const locale = opts.locale ?? 'zh';
+  const t = messagesFor(locale);
+  const channelTitle = displayChannelTitle(channel.id, channel.title, locale);
   const bodyHtml = renderBlocks(channel.body, share.token, publicOrigin);
   const extHtml =
     channel.ext && Object.keys(channel.ext).length
@@ -70,7 +72,7 @@ document.getElementById('share-send').addEventListener('click', async () => {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(channel.title)}</title>
+<title>${escapeHtml(channelTitle)}</title>
 <style>
   body { margin: 0; font-family: system-ui, sans-serif; background: #f4f5f7; color: #1a1a1a; }
   main { max-width: 720px; margin: 0 auto; padding: 24px 16px 48px; background: #fff; min-height: 100vh; box-sizing: border-box; }
@@ -85,7 +87,7 @@ document.getElementById('share-send').addEventListener('click', async () => {
 </head>
 <body>
 <main>
-  <h1>${escapeHtml(channel.title)}</h1>
+  <h1>${escapeHtml(channelTitle)}</h1>
   ${extHtml}
   <section class="body">${bodyHtml}</section>
   <section class="entries">${entriesHtml}</section>

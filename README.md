@@ -64,4 +64,4 @@ npm run test:e2e
 
 许可证见 `LICENSE`（MIT）。贡献见 `CONTRIBUTING.md` / `CONTRIBUTING.en.md`。Agent 约定见 `AGENTS.md` / `AGENTS.en.md`。
 
-界面语言：融合台与分享 HTML 支持中/英（`?lang=`、`Accept-Language`、融合台切换器）。种子频道标题仍为中文样例数据。
+界面语言：融合台与分享 HTML 支持中/英（`?lang=`、`Accept-Language`、融合台切换器）。种子落盘标题仍为中文；界面在英文 locale 下按频道 id 显示英译标题。

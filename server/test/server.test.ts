@@ -258,7 +258,9 @@ describe('share mechanisms', () => {
     assert.match(byQueryBody, /lang="en"/);
     assert.match(byQueryBody, />Send</);
     assert.match(byQueryBody, /Add a comment/);
+    assert.match(byQueryBody, /<h1>API draft<\/h1>/);
     assert.doesNotMatch(byQueryBody, />发送</);
+    assert.doesNotMatch(byQueryBody, /<h1>接口草案<\/h1>/);
 
     const byHeader = await fetch(`${baseUrl}/s/${t}`, {
       headers: { Accept: 'text/html', 'Accept-Language': 'en-US,en;q=0.9' },
