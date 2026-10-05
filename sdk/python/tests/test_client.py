@@ -110,6 +110,11 @@ class SdkPythonTest(unittest.TestCase):
         links = client.list_links("ch_draft", filter='title co "术语"')
         self.assertEqual(len(links["data"]), 1)
         self.assertEqual(links["data"][0]["title"], "术语表")
+        session = client.create_session("u_lin", "demo-pass")
+        self.assertIn("token", session)
+        as_lin = Client(self.base_url, session["token"])
+        listed = as_lin.list_channels()
+        self.assertTrue(any(c["title"] == "接口草案" for c in listed["data"]))
 
 
 if __name__ == "__main__":

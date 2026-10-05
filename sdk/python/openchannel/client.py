@@ -41,13 +41,15 @@ class Client:
         idempotency_key: Optional[str] = None,
         raw_body: Optional[bytes] = None,
         content_type: Optional[str] = None,
+        anonymous: bool = False,
     ) -> tuple[int, Any]:
         hdrs: MutableMapping[str, str] = {
-            "Authorization": f"Bearer {self.token}",
             "Accept": "application/vnd.ocp+json",
         }
         if headers:
             hdrs.update(headers)
+        if not anonymous and self.token:
+            hdrs.setdefault("Authorization", f"Bearer {self.token}")
         if idempotency_key:
             hdrs["Idempotency-Key"] = idempotency_key
         data = raw_body
@@ -76,6 +78,25 @@ class Client:
                 raise OcpError(status, parsed)
             raise OcpError(status, {"code": "unknown", "title": "Error", "status": status})
         return status, parsed
+
+    def create_session(self, account_id: str, password: str) -> Any:
+        _, data = self._request(
+            "POST",
+            "/v1/sessions",
+            body={"id": account_id, "password": password},
+            anonymous=True,
+        )
+        return data
+
+    def create_account(self, body: Mapping[str, Any]) -> tuple[int, Any]:
+        return self._request("POST", "/v1/accounts", body=dict(body))
+
+    def create_grant(self, body: Mapping[str, Any]) -> tuple[int, Any]:
+        return self._request("POST", "/v1/grants", body=dict(body))
+
+    def revoke_grant(self, grant_id: str) -> Any:
+        _, data = self._request("DELETE", f"/v1/grants/{grant_id}")
+        return data
 
     def list_channels(self, **query: Any) -> Any:
         _, data = self._request("GET", "/v1/channels", query=query)

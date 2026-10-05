@@ -1,4 +1,10 @@
 {
+  "accounts": [
+    { "id": "u_fuse", "display_name": "融合台", "provider_role": "owner", "password": "demo-pass" },
+    { "id": "u_lin", "display_name": "林可", "provider_role": "owner", "password": "demo-pass" },
+    { "id": "u_zhou", "display_name": "周宁", "provider_role": "member", "password": "demo-pass" },
+    { "id": "u_xu", "display_name": "许安", "provider_role": "guest", "password": "demo-pass" }
+  ],
   "channels": [
     {
       "id": "ch_proj",
@@ -28,7 +34,8 @@
       "type": "task",
       "title": "配图导出",
       "members": [
-        { "id": "u_xu", "display_name": "许安", "role": "owner" }
+        { "id": "u_lin", "display_name": "林可", "role": "owner" },
+        { "id": "u_xu", "display_name": "许安", "role": "guest" }
       ],
       "body": [
         { "id": "blk_img", "type": "text", "text": "导出首页用的三张图。", "format": "plain" }

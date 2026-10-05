@@ -1,4 +1,10 @@
 {
+  "accounts": [
+    { "id": "u_fuse", "display_name": "融合台", "provider_role": "owner", "password": "demo-pass" },
+    { "id": "u_lin", "display_name": "林可", "provider_role": "owner", "password": "demo-pass" },
+    { "id": "u_zhou", "display_name": "周宁", "provider_role": "member", "password": "demo-pass" },
+    { "id": "u_xu", "display_name": "许安", "provider_role": "guest", "password": "demo-pass" }
+  ],
   "files": [
     {
       "id": "file_terms",

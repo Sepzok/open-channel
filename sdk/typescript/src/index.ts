@@ -48,13 +48,15 @@ export class Client {
   private async request(
     method: string,
     path: string,
-    opts?: { query?: Query; body?: unknown; headers?: Record<string, string>; idempotencyKey?: string },
+    opts?: { query?: Query; body?: unknown; headers?: Record<string, string>; idempotencyKey?: string; anonymous?: boolean },
   ): Promise<{ status: number; data: unknown; headers: Headers }> {
     const headers: Record<string, string> = {
-      Authorization: `Bearer ${this.token}`,
       Accept: 'application/vnd.ocp+json',
       ...opts?.headers,
     };
+    if (opts?.anonymous !== true) {
+      headers.Authorization = `Bearer ${this.token}`;
+    }
     let body: string | Buffer | undefined;
     if (opts?.body !== undefined) {
       headers['Content-Type'] = 'application/json';
@@ -77,6 +79,29 @@ export class Client {
       throw new OcpError(res.status, { code: 'unknown', title: 'Error', status: res.status, body: data });
     }
     return { status: res.status, data, headers: res.headers };
+  }
+
+  async createSession(accountId: string, password: string) {
+    const { data, status } = await this.request('POST', '/v1/sessions', {
+      body: { id: accountId, password },
+      anonymous: true,
+    });
+    return { data, status };
+  }
+
+  async createAccount(body: Record<string, unknown>) {
+    const { data, status } = await this.request('POST', '/v1/accounts', { body });
+    return { data, status };
+  }
+
+  async createGrant(body: Record<string, unknown>) {
+    const { data, status } = await this.request('POST', '/v1/grants', { body });
+    return { data, status };
+  }
+
+  async revokeGrant(id: string) {
+    const { data } = await this.request('DELETE', `/v1/grants/${id}`);
+    return data;
   }
 
   async listChannels(query?: Query) {

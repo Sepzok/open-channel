@@ -75,7 +75,7 @@ export async function httpJson(
   baseUrl: string,
   method: string,
   pathname: string,
-  opts?: { token?: string; body?: unknown; headers?: Record<string, string> },
+  opts?: { token?: string | null; body?: unknown; headers?: Record<string, string> },
 ): Promise<{ status: number; headers: Headers; body: unknown; raw: string }> {
   const headers: Record<string, string> = {
     Accept: 'application/vnd.ocp+json',

@@ -5,7 +5,7 @@
   "$defs": {
     "id": {
       "type": "string",
-      "pattern": "^(ch|en|ln|sh|rev|file|blk)_[a-z0-9_]{1,40}$"
+      "pattern": "^(ch|en|ln|sh|rev|file|blk|se|gr)_[a-z0-9_]{1,40}$"
     },
     "actorId": {
       "type": "string",
@@ -217,6 +217,30 @@
           "not": { "required": ["target_id"] }
         }
       ]
+    },
+    "accountPublic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "display_name", "provider_role", "created_at"],
+      "properties": {
+        "id": { "$ref": "#/$defs/actorId" },
+        "display_name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "provider_role": { "enum": ["owner", "member", "guest"] },
+        "created_at": { "$ref": "#/$defs/dateTime" }
+      }
+    },
+    "grantPublic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "channel_id", "scope", "expires_at", "created_at", "revoked_at"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "channel_id": { "$ref": "#/$defs/id" },
+        "scope": { "enum": ["view", "comment", "edit"] },
+        "expires_at": { "$ref": "#/$defs/dateTime" },
+        "created_at": { "$ref": "#/$defs/dateTime" },
+        "revoked_at": { "anyOf": [{ "$ref": "#/$defs/dateTime" }, { "type": "null" }] }
+      }
     },
     "problem": {
       "type": "object",

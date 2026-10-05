@@ -1,4 +1,10 @@
 {
+  "accounts": [
+    { "id": "u_fuse", "display_name": "融合台", "provider_role": "owner", "password": "demo-pass" },
+    { "id": "u_lin", "display_name": "林可", "provider_role": "owner", "password": "demo-pass" },
+    { "id": "u_zhou", "display_name": "周宁", "provider_role": "member", "password": "demo-pass" },
+    { "id": "u_xu", "display_name": "许安", "provider_role": "guest", "password": "demo-pass" }
+  ],
   "channels": [
     {
       "id": "ch_dm_lin_zhou",
@@ -16,7 +22,7 @@
       "members": [
         { "id": "u_lin", "display_name": "林可", "role": "owner" },
         { "id": "u_zhou", "display_name": "周宁", "role": "member" },
-        { "id": "u_xu", "display_name": "许安", "role": "member" }
+        { "id": "u_xu", "display_name": "许安", "role": "guest" }
       ]
     },
     {
@@ -24,7 +30,7 @@
       "type": "room",
       "title": "设计讨论",
       "members": [
-        { "id": "u_xu", "display_name": "许安", "role": "owner" }
+        { "id": "u_lin", "display_name": "林可", "role": "owner" }
       ]
     }
   ],

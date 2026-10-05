@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { AppOptions, Block, Channel, Entry, ExtValue, FileMeta, Link, Revision, Share, StoreData } from './types.js';
 import { genId, nowIso, trimTitle } from './util.js';
 import { importSeed } from './seed.js';
+import { ensureBootstrapAccount } from './auth.js';
 
 export class Store {
   data: StoreData = {
@@ -12,6 +13,9 @@ export class Store {
     shares: {},
     revisions: {},
     files: {},
+    accounts: {},
+    sessions: {},
+    grants: {},
   };
 
   readonly options: AppOptions;
@@ -31,6 +35,12 @@ export class Store {
     if (fs.existsSync(this.storePath)) {
       const raw = fs.readFileSync(this.storePath, 'utf8');
       this.data = JSON.parse(raw) as StoreData;
+      this.data.accounts ??= {};
+      this.data.sessions ??= {};
+      this.data.grants ??= {};
+      const hadBootstrap = Boolean(this.data.accounts[this.options.actor.id]);
+      ensureBootstrapAccount(this);
+      if (!hadBootstrap) this.persistSync();
     } else if (this.options.seed) {
       await this.runExclusive(async () => {
         importSeed(this, this.options.seed!);

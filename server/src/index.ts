@@ -4,7 +4,7 @@ import path from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Store, createChannelRecord, updateChannelBody } from './store.js';
 import { problem, type ProblemCode } from './problems.js';
-import type { AppOptions, Block, Entry, Link } from './types.js';
+import type { AppOptions, Block, Channel, Entry, Identity, Link } from './types.js';
 import {
   OCP_JSON,
   PROBLEM_JSON,
@@ -12,6 +12,7 @@ import {
   blockTextContent,
   genId,
   genShareToken,
+  isActorId,
   isResourceId,
   isTypeName,
   nowIso,
@@ -20,13 +21,36 @@ import {
   parseJsonBody,
   sha256,
   titleValid,
-  tokensEqual,
   trimTitle,
   wantsShareJson,
 } from './util.js';
 import { sharePageHtml } from './html.js';
 import { parseListFilterQuery } from './scimFilter.js';
 import type { FileMeta } from './types.js';
+import {
+  canCreateAccount,
+  canCreateChannel,
+  canCreateEntry,
+  canCreateGrant,
+  canCreateShare,
+  canDeleteChannel,
+  canPatchMembers,
+  canReadFile,
+  canSeeChannel,
+  canUploadFile,
+  canWriteBody,
+  canWriteLinks,
+  createGrantRecord,
+  createSession,
+  hashPassword,
+  publicAccount,
+  publicGrant,
+  resolveBearer,
+  validateMembers,
+  verifyPassword,
+  isProviderRole,
+  DUMMY_PASSWORD_HASH,
+} from './auth.js';
 
 type IdempotencyRecord = { hash: string; status: number; body: string };
 
@@ -114,15 +138,37 @@ export function createApp(options: AppOptions): http.Server {
     return true;
   }
 
-  function checkAuth(req: IncomingMessage, res: ServerResponse): boolean {
+  function bearerToken(req: IncomingMessage): string | null {
     const h = req.headers.authorization;
-    if (!h || !h.startsWith('Bearer ')) {
+    if (!h || !h.startsWith('Bearer ')) return null;
+    return h.slice(7);
+  }
+
+  function checkAuth(req: IncomingMessage, res: ServerResponse): Identity | null {
+    const token = bearerToken(req);
+    if (token === null) {
       sendProblem(res, 'unauthorized');
+      return null;
+    }
+    const id = resolveBearer(store, token);
+    if (!id) {
+      sendProblem(res, 'unauthorized');
+      return null;
+    }
+    return id;
+  }
+
+  function requireVisible(
+    res: ServerResponse,
+    identity: Identity,
+    ch: Channel | undefined,
+  ): ch is Channel {
+    if (!ch) {
+      sendProblem(res, 'not_found');
       return false;
     }
-    const token = h.slice(7);
-    if (!tokensEqual(token, options.token)) {
-      sendProblem(res, 'unauthorized');
+    if (!canSeeChannel(identity, ch)) {
+      sendProblem(res, 'forbidden');
       return false;
     }
     return true;
@@ -287,11 +333,13 @@ export function createApp(options: AppOptions): http.Server {
     try {
       // GET /v1
       if (method === 'GET' && pathname === '/v1') {
+        const tok = bearerToken(req);
+        const resolved = tok ? resolveBearer(store, tok) : null;
         sendJson(res, 200, {
           protocol: 'ocp',
           version: '1',
           provider: { id: options.providerId, name: options.providerName },
-          actor: options.actor,
+          actor: resolved ? resolved.actor : options.actor,
           capabilities: options.capabilities,
         });
         return;
@@ -417,10 +465,200 @@ export function createApp(options: AppOptions): http.Server {
         return;
       }
 
-      if (!checkAuth(req, res)) return;
+      if (pathname === '/v1/sessions' && method === 'POST') {
+        const raw = (await readBody(req)).toString('utf8');
+        const parsed = parseJsonBody(raw);
+        if (!parsed.ok) {
+          sendProblem(res, 'validation_error');
+          return;
+        }
+        const o = parsed.value as Record<string, unknown>;
+        const unk = assertOnlyKeys(o, ['id', 'password']);
+        if (unk || typeof o.id !== 'string' || typeof o.password !== 'string') {
+          sendProblem(res, 'validation_error');
+          return;
+        }
+        const account = store.data.accounts[o.id];
+        const ok = verifyPassword(o.password, account?.password_hash ?? DUMMY_PASSWORD_HASH);
+        if (!account || !ok) {
+          sendProblem(res, 'unauthorized');
+          return;
+        }
+        const created = await store.runExclusive(() => {
+          const se = createSession(store, account);
+          store.persistSync();
+          return se;
+        });
+        sendJson(res, 201, { id: created.id, account: publicAccount(account), token: created.token });
+        return;
+      }
+
+      const identity = checkAuth(req, res);
+      if (!identity) return;
+
+      if (pathname === '/v1/accounts' && method === 'GET') {
+        if (!canCreateAccount(identity)) {
+          sendProblem(res, 'forbidden');
+          return;
+        }
+        sendJson(res, 200, { data: Object.values(store.data.accounts).map(publicAccount) });
+        return;
+      }
+
+      if (pathname === '/v1/accounts' && method === 'POST') {
+        if (!canCreateAccount(identity)) {
+          sendProblem(res, 'forbidden');
+          return;
+        }
+        const raw = (await readBody(req)).toString('utf8');
+        const parsed = parseJsonBody(raw);
+        if (!parsed.ok) {
+          sendProblem(res, 'validation_error');
+          return;
+        }
+        const o = parsed.value as Record<string, unknown>;
+        const unk = assertOnlyKeys(o, ['id', 'display_name', 'provider_role', 'password']);
+        if (unk) {
+          sendProblem(res, 'validation_error');
+          return;
+        }
+        if (typeof o.id !== 'string' || !isActorId(o.id)) {
+          sendProblem(res, 'validation_error');
+          return;
+        }
+        if (typeof o.display_name !== 'string' || o.display_name.length < 1 || o.display_name.length > 80) {
+          sendProblem(res, 'validation_error');
+          return;
+        }
+        if (typeof o.provider_role !== 'string' || !isProviderRole(o.provider_role)) {
+          sendProblem(res, 'validation_error');
+          return;
+        }
+        if (typeof o.password !== 'string' || o.password.length < 8 || o.password.length > 128) {
+          sendProblem(res, 'validation_error');
+          return;
+        }
+        const created = await store.runExclusive(() => {
+          if (store.data.accounts[o.id as string]) return { error: 'conflict' as const };
+          store.data.accounts[o.id as string] = {
+            id: o.id as string,
+            display_name: o.display_name as string,
+            provider_role: o.provider_role as 'owner' | 'member' | 'guest',
+            password_hash: hashPassword(o.password as string),
+            created_at: nowIso(),
+          };
+          store.persistSync();
+          return { account: store.data.accounts[o.id as string]! };
+        });
+        if ('error' in created) {
+          sendProblem(res, 'conflict');
+          return;
+        }
+        sendJson(res, 201, publicAccount(created.account));
+        return;
+      }
+
+      if (pathname === '/v1/grants' && method === 'POST') {
+        const raw = (await readBody(req)).toString('utf8');
+        const parsed = parseJsonBody(raw);
+        if (!parsed.ok) {
+          sendProblem(res, 'validation_error');
+          return;
+        }
+        const o = parsed.value as Record<string, unknown>;
+        if (o.id !== undefined) {
+          sendProblem(res, 'validation_error');
+          return;
+        }
+        const unk = assertOnlyKeys(o, ['channel_id', 'scope', 'expires_at']);
+        if (unk) {
+          sendProblem(res, 'validation_error');
+          return;
+        }
+        if (typeof o.channel_id !== 'string' || typeof o.scope !== 'string' || typeof o.expires_at !== 'string') {
+          sendProblem(res, 'validation_error');
+          return;
+        }
+        if (o.scope !== 'view' && o.scope !== 'comment' && o.scope !== 'edit') {
+          sendProblem(res, 'validation_error');
+          return;
+        }
+        if (o.expires_at <= nowIso()) {
+          sendProblem(res, 'validation_error', { errors: [{ path: 'expires_at', message: 'must be future' }] });
+          return;
+        }
+        const ch = store.getChannel(o.channel_id);
+        if (!requireVisible(res, identity, ch)) return;
+        if (!canCreateGrant(identity, ch)) {
+          sendProblem(res, 'forbidden');
+          return;
+        }
+        const createdBy = identity.kind === 'account' ? identity.account.id : 'grant';
+        const made = await store.runExclusive(() => {
+          const rec = createGrantRecord(store, {
+            channel_id: ch.id,
+            scope: o.scope as 'view' | 'comment' | 'edit',
+            expires_at: o.expires_at as string,
+            created_by: createdBy,
+          });
+          store.persistSync();
+          return rec;
+        });
+        sendJson(res, 201, { ...publicGrant(made.grant), token: made.token });
+        return;
+      }
+
+      const grantOne = pathname.match(/^\/v1\/grants\/([^/]+)$/);
+      if (grantOne && method === 'DELETE') {
+        const g = store.data.grants[grantOne[1]!];
+        if (!g) {
+          sendProblem(res, 'not_found');
+          return;
+        }
+        const ch = store.getChannel(g.channel_id);
+        const ownerOk = ch && canCreateGrant(identity, ch);
+        const creatorOk = identity.kind === 'account' && identity.account.id === g.created_by;
+        if (!ownerOk && !creatorOk) {
+          sendProblem(res, 'forbidden');
+          return;
+        }
+        const updated = await store.runExclusive(() => {
+          g.revoked_at = nowIso();
+          store.persistSync();
+          return g;
+        });
+        sendJson(res, 200, publicGrant(updated));
+        return;
+      }
+
+      const sessDel = pathname.match(/^\/v1\/sessions\/([^/]+)$/);
+      if (sessDel && method === 'DELETE') {
+        const se = store.data.sessions[sessDel[1]!];
+        if (!se) {
+          sendProblem(res, 'not_found');
+          return;
+        }
+        const self = identity.kind === 'account' && (identity.session?.id === se.id || identity.account.id === se.account_id);
+        const admin = identity.kind === 'account' && identity.account.provider_role === 'owner';
+        if (!self && !admin) {
+          sendProblem(res, 'forbidden');
+          return;
+        }
+        const updated = await store.runExclusive(() => {
+          se.revoked_at = nowIso();
+          store.persistSync();
+          return se;
+        });
+        sendJson(res, 200, { id: updated.id, account_id: updated.account_id, revoked_at: updated.revoked_at });
+        return;
+      }
 
       // Files
       if (pathname === '/v1/files' && method === 'POST') {
+        if (!canUploadFile(identity)) {
+          sendProblem(res, 'forbidden');
+          return;
+        }
         const nameHeader = req.headers['x-file-name'];
         const name = nameHeader ? decodeURIComponent(String(nameHeader)) : 'file';
         const mediaType = String(req.headers['content-type'] ?? 'application/octet-stream');
@@ -476,6 +714,10 @@ export function createApp(options: AppOptions): http.Server {
 
       const fileGet = pathname.match(/^\/v1\/files\/([^/]+)$/);
       if (fileGet && (method === 'GET' || method === 'HEAD')) {
+        if (!canReadFile(store, identity, fileGet[1]!)) {
+          sendProblem(res, 'forbidden');
+          return;
+        }
         sendStoredFile(req, res, fileGet[1]!);
         return;
       }
@@ -501,7 +743,10 @@ export function createApp(options: AppOptions): http.Server {
           order: (url.searchParams.get('order') as 'updated' | 'created') ?? 'updated',
           limit,
           cursor: url.searchParams.get('cursor') ?? undefined,
-          match: parsedFilter.match,
+          match: (ch) => {
+            if (parsedFilter.match && !parsedFilter.match(ch)) return false;
+            return canSeeChannel(identity, ch);
+          },
         });
         sendJson(res, 200, result);
         return;
@@ -510,6 +755,9 @@ export function createApp(options: AppOptions): http.Server {
       if (pathname === '/v1/channels' && method === 'POST') {
         const raw = (await readBody(req)).toString('utf8');
         await handleIdempotent(req, res, raw, () => {
+          if (!canCreateChannel(identity)) {
+            return { status: 403, body: problem('forbidden') };
+          }
           const parsed = parseJsonBody(raw);
           if (!parsed.ok) {
             return { status: 400, body: problem('validation_error') };
@@ -547,6 +795,8 @@ export function createApp(options: AppOptions): http.Server {
           if (o.members !== undefined) {
             if (!Array.isArray(o.members)) return { status: 400, body: problem('validation_error') };
             members = o.members as { id: string; display_name: string; role: string }[];
+            const memErr = validateMembers(store, members);
+            if (memErr) return { status: 400, body: problem('validation_error') };
           }
           let ext;
           if (o.ext !== undefined) {
@@ -557,7 +807,7 @@ export function createApp(options: AppOptions): http.Server {
           const ch = createChannelRecord(
             store,
             { type: o.type, title: o.title, body: blocks, members, ext },
-            options.actor,
+            identity.actor,
           );
           store.persistSync();
           return { status: 201, body: store.publicChannel(ch) };
@@ -569,15 +819,16 @@ export function createApp(options: AppOptions): http.Server {
       if (chMatch) {
         const chId = chMatch[1]!;
         const ch = store.getChannel(chId);
-        if (!ch) {
-          sendProblem(res, 'not_found');
-          return;
-        }
+        if (!requireVisible(res, identity, ch)) return;
         if (method === 'GET') {
           sendJson(res, 200, store.publicChannel(ch));
           return;
         }
         if (method === 'DELETE') {
+          if (!canDeleteChannel(identity, ch)) {
+            sendProblem(res, 'forbidden');
+            return;
+          }
           const updated = await store.runExclusive(() => {
             ch.deleted_at = nowIso();
             ch.updated_at = ch.deleted_at;
@@ -608,6 +859,14 @@ export function createApp(options: AppOptions): http.Server {
             sendProblem(res, 'capability_unsupported', { capability: 'body' });
             return;
           }
+          if ((o.title !== undefined || o.body !== undefined || o.ext !== undefined) && !canWriteBody(identity, ch)) {
+            sendProblem(res, 'forbidden');
+            return;
+          }
+          if (o.members !== undefined && !canPatchMembers(identity, ch)) {
+            sendProblem(res, 'forbidden');
+            return;
+          }
           const touchesRevision = o.title !== undefined || o.body !== undefined;
           if (touchesRevision && options.capabilities.revisions && o.base_revision === undefined) {
             sendProblem(res, 'validation_error', { errors: [{ path: 'base_revision', message: 'required' }] });
@@ -630,7 +889,9 @@ export function createApp(options: AppOptions): http.Server {
               ch.body = br.blocks;
             }
             if (o.members !== undefined) {
-              ch.members = o.members as typeof ch.members;
+              const next = o.members as typeof ch.members;
+              if (validateMembers(store, next)) return { error: 'validation_error' as const };
+              ch.members = next;
             }
             if (o.ext !== undefined) {
               const er = parseExt(o.ext);
@@ -640,7 +901,7 @@ export function createApp(options: AppOptions): http.Server {
             }
             ch.updated_at = nowIso();
             if (touchesRevision && options.capabilities.revisions) {
-              store.addRevision(ch, options.actor);
+              store.addRevision(ch, identity.actor);
             }
             store.persistSync();
             return { channel: ch };
@@ -663,10 +924,7 @@ export function createApp(options: AppOptions): http.Server {
       if (entList) {
         const chId = entList[1]!;
         const ch = store.getChannel(chId);
-        if (!ch) {
-          sendProblem(res, 'not_found');
-          return;
-        }
+        if (!requireVisible(res, identity, ch)) return;
         if (!options.capabilities.entries) {
           sendProblem(res, 'capability_unsupported', { capability: 'entries' });
           return;
@@ -704,6 +962,9 @@ export function createApp(options: AppOptions): http.Server {
         if (method === 'POST') {
           const raw = (await readBody(req)).toString('utf8');
           await handleIdempotent(req, res, raw, () => {
+            if (!canCreateEntry(identity, ch)) {
+              return { status: 403, body: problem('forbidden') };
+            }
             if (ch.deleted_at) return { status: 409, body: problem('deleted') };
             const parsed = parseJsonBody(raw);
             if (!parsed.ok) return { status: 400, body: problem('validation_error') };
@@ -752,7 +1013,7 @@ export function createApp(options: AppOptions): http.Server {
               body: br.blocks,
               parent_id: (o.parent_id as string | null) ?? null,
               anchor: (o.anchor as Entry['anchor']) ?? null,
-              author: options.actor,
+              author: identity.actor,
               ext: entryExt,
               created_at: ts,
               updated_at: ts,
@@ -774,11 +1035,17 @@ export function createApp(options: AppOptions): http.Server {
           sendProblem(res, 'not_found');
           return;
         }
+        const entryCh = store.getChannel(entry.channel_id);
+        if (!requireVisible(res, identity, entryCh)) return;
         if (method === 'GET') {
           sendJson(res, 200, entry);
           return;
         }
         if (method === 'DELETE') {
+          if (!canCreateEntry(identity, entryCh)) {
+            sendProblem(res, 'forbidden');
+            return;
+          }
           const updated = await store.runExclusive(() => {
             entry.deleted_at = nowIso();
             entry.updated_at = entry.deleted_at;
@@ -797,10 +1064,7 @@ export function createApp(options: AppOptions): http.Server {
       if (linkList) {
         const chId = linkList[1]!;
         const ch = store.getChannel(chId);
-        if (!ch) {
-          sendProblem(res, 'not_found');
-          return;
-        }
+        if (!requireVisible(res, identity, ch)) return;
         if (!options.capabilities.links) {
           sendProblem(res, 'capability_unsupported', { capability: 'links' });
           return;
@@ -845,6 +1109,9 @@ export function createApp(options: AppOptions): http.Server {
         if (method === 'POST') {
           const raw = (await readBody(req)).toString('utf8');
           await handleIdempotent(req, res, raw, () => {
+            if (!canWriteLinks(identity, ch)) {
+              return { status: 403, body: problem('forbidden') };
+            }
             const parsed = parseJsonBody(raw);
             if (!parsed.ok) return { status: 400, body: problem('validation_error') };
             const o = parsed.value as Record<string, unknown>;
@@ -895,6 +1162,12 @@ export function createApp(options: AppOptions): http.Server {
           sendProblem(res, 'not_found');
           return;
         }
+        const src = store.getChannel(link.source_id);
+        if (!requireVisible(res, identity, src)) return;
+        if (!canWriteLinks(identity, src)) {
+          sendProblem(res, 'forbidden');
+          return;
+        }
         const updated = await store.runExclusive(() => {
           link.deleted_at = nowIso();
           store.persistSync();
@@ -908,8 +1181,9 @@ export function createApp(options: AppOptions): http.Server {
       const shareCreate = pathname.match(/^\/v1\/channels\/([^/]+)\/shares$/);
       if (shareCreate && method === 'POST') {
         const ch = store.getChannel(shareCreate[1]!);
-        if (!ch) {
-          sendProblem(res, 'not_found');
+        if (!requireVisible(res, identity, ch)) return;
+        if (!canCreateShare(identity, ch)) {
+          sendProblem(res, 'forbidden');
           return;
         }
         if (!options.capabilities.shares) {
@@ -956,6 +1230,12 @@ export function createApp(options: AppOptions): http.Server {
           sendProblem(res, 'not_found');
           return;
         }
+        const shareCh = store.getChannel(share.channel_id);
+        if (!requireVisible(res, identity, shareCh)) return;
+        if (!canCreateShare(identity, shareCh)) {
+          sendProblem(res, 'forbidden');
+          return;
+        }
         if (method === 'GET') {
           sendJson(res, 200, share);
           return;
@@ -975,10 +1255,7 @@ export function createApp(options: AppOptions): http.Server {
       const revList = pathname.match(/^\/v1\/channels\/([^/]+)\/revisions$/);
       if (revList && method === 'GET') {
         const ch = store.getChannel(revList[1]!);
-        if (!ch) {
-          sendProblem(res, 'not_found');
-          return;
-        }
+        if (!requireVisible(res, identity, ch)) return;
         if (!options.capabilities.revisions) {
           sendProblem(res, 'capability_unsupported', { capability: 'revisions' });
           return;
@@ -993,10 +1270,7 @@ export function createApp(options: AppOptions): http.Server {
       const revGet = pathname.match(/^\/v1\/channels\/([^/]+)\/revisions\/([^/]+)$/);
       if (revGet) {
         const ch = store.getChannel(revGet[1]!);
-        if (!ch) {
-          sendProblem(res, 'not_found');
-          return;
-        }
+        if (!requireVisible(res, identity, ch)) return;
         if (!options.capabilities.revisions) {
           sendProblem(res, 'capability_unsupported', { capability: 'revisions' });
           return;
@@ -1015,8 +1289,9 @@ export function createApp(options: AppOptions): http.Server {
       const revRestore = pathname.match(/^\/v1\/channels\/([^/]+)\/revisions\/([^/]+)\/restore$/);
       if (revRestore && method === 'POST') {
         const ch = store.getChannel(revRestore[1]!);
-        if (!ch) {
-          sendProblem(res, 'not_found');
+        if (!requireVisible(res, identity, ch)) return;
+        if (!canWriteBody(identity, ch)) {
+          sendProblem(res, 'forbidden');
           return;
         }
         if (!options.capabilities.revisions) {
@@ -1032,7 +1307,7 @@ export function createApp(options: AppOptions): http.Server {
           ch.title = rev.title;
           ch.body = JSON.parse(JSON.stringify(rev.body)) as Block[];
           ch.updated_at = nowIso();
-          store.addRevision(ch, options.actor);
+          store.addRevision(ch, identity.actor);
           store.persistSync();
           return ch;
         });

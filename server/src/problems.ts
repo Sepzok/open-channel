@@ -13,7 +13,8 @@ export type ProblemCode =
   | 'threads_unsupported'
   | 'share_unavailable'
   | 'share_forbidden'
-  | 'range_not_satisfiable';
+  | 'range_not_satisfiable'
+  | 'forbidden';
 
 const TITLES: Record<ProblemCode, string> = {
   unauthorized: 'Unauthorized',
@@ -31,6 +32,7 @@ const TITLES: Record<ProblemCode, string> = {
   share_unavailable: 'Share unavailable',
   share_forbidden: 'Share forbidden',
   range_not_satisfiable: 'Range not satisfiable',
+  forbidden: 'Forbidden',
 };
 
 const STATUS: Record<ProblemCode, number> = {
@@ -49,6 +51,7 @@ const STATUS: Record<ProblemCode, number> = {
   share_unavailable: 404,
   share_forbidden: 403,
   range_not_satisfiable: 416,
+  forbidden: 403,
 };
 
 export function problem(

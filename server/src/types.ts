@@ -9,6 +9,39 @@ export type Capabilities = {
 
 export type Actor = { id: string; display_name: string };
 
+export type ProviderRole = 'owner' | 'member' | 'guest';
+
+export type Account = {
+  id: string;
+  display_name: string;
+  provider_role: ProviderRole;
+  password_hash: string;
+  created_at: string;
+};
+
+export type Session = {
+  id: string;
+  account_id: string;
+  token_hash: string;
+  created_at: string;
+  revoked_at: string | null;
+};
+
+export type Grant = {
+  id: string;
+  channel_id: string;
+  scope: 'view' | 'comment' | 'edit';
+  token_hash: string;
+  expires_at: string;
+  created_at: string;
+  revoked_at: string | null;
+  created_by: string;
+};
+
+export type Identity =
+  | { kind: 'account'; account: Account; actor: Actor; session?: Session }
+  | { kind: 'grant'; grant: Grant; actor: Actor };
+
 export type Member = Actor & { role: string };
 
 export type FileMeta = { id: string; name: string; media_type: string; size: number };
@@ -87,6 +120,9 @@ export type StoreData = {
   shares: Record<string, Share>;
   revisions: Record<string, Revision>;
   files: Record<string, FileMeta>;
+  accounts: Record<string, Account>;
+  sessions: Record<string, Session>;
+  grants: Record<string, Grant>;
 };
 
 export type SeedFile = {
@@ -97,6 +133,7 @@ export type SeedFile = {
 };
 
 export type Seed = {
+  accounts?: { id: string; display_name: string; provider_role: ProviderRole; password: string }[];
   files?: SeedFile[];
   channels?: Partial<Channel> & { id: string; type: string; title: string }[];
   edits?: { channel_id: string; author?: Actor; body: Block[] }[];

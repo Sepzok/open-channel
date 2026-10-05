@@ -88,5 +88,10 @@ describe('TypeScript SDK', () => {
     const links = (await client.listLinks('ch_draft', { filter: 'title co "术语"' })) as { data: { title?: string }[] };
     assert.equal(links.data.length, 1);
     assert.equal(links.data[0]?.title, '术语表');
+
+    const session = await client.createSession('u_lin', 'demo-pass');
+    const lin = new Client({ baseUrl, token: (session.data as { token: string }).token });
+    const asLin = (await lin.listChannels()) as { data: { title: string }[] };
+    assert.ok(asLin.data.some((c) => c.title === '接口草案'));
   });
 });

@@ -3,9 +3,22 @@ import path from 'node:path';
 import type { Block, Entry, Link, Seed, Store } from './types.js';
 import { createChannelRecord, updateChannelBody } from './store.js';
 import { nowIso, parseExt } from './util.js';
+import { ensureBootstrapAccount, hashPassword, isProviderRole } from './auth.js';
 
 export function importSeed(store: Store, seed: Seed): void {
   const actor = store.options.actor;
+
+  for (const acc of seed.accounts ?? []) {
+    if (!isProviderRole(acc.provider_role)) throw new Error(`Invalid provider_role ${acc.id}`);
+    store.data.accounts[acc.id] = {
+      id: acc.id,
+      display_name: acc.display_name,
+      provider_role: acc.provider_role,
+      password_hash: hashPassword(acc.password),
+      created_at: nowIso(),
+    };
+  }
+  ensureBootstrapAccount(store);
 
   const requireExt = (raw: unknown, where: string) => {
     if (raw === undefined) return undefined;

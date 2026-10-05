@@ -17,7 +17,7 @@
 | `title` | 1–200 个 Unicode 码位，首尾空白去掉后计算 |
 | `body` | 块数组。无正文能力时恒为 `[]` |
 | `capabilities` | 该频道能力，v1 与提供方发现文档相同 |
-| `members` | `{ id, display_name, role }[]`。`role` 为 `owner` 或 `member` 或符合 type 语法的扩展 |
+| `members` | `{ id, display_name, role }[]`。`role` 为 `owner`、`member` 或 `guest`。`id` 必须是本提供方已有账号。提供方 `guest` 不得被设为频道 `owner` |
 | `ext` | 可选。自定义标量袋，最多 16 项。键与第 2 节 `type` 相同（`^[a-z][a-z0-9._-]{0,63}$`）。值为 JSON 字符串、有限数字或布尔。字符串 1–256 码位，空串不允许。禁止 `null`、数组、对象。协议不解释键的行业含义，不提供字段发现。`PATCH` / 创建时整份替换；省略则不变；`ext: {}` 清空后参考实现省略该字段 |
 | `created_at` `updated_at` | 时间 |
 | `deleted_at` | 未删除为 `null` |
@@ -42,7 +42,7 @@ v1 一个提供方的全部频道使用同一份能力。客户端不能在创�
 | `file` | `file`: `{ id, name, media_type, size }`。不含字节、不含下载 URL |
 | `embed` | `embed`: `{ url, title }`。`url` 须为绝对 `http` 或 `https` |
 
-资源 id（含块 id）符合 `^(ch|en|ln|sh|rev|file|blk)_[a-z0-9_]{1,40}$`。同一 `body` 内块 id 唯一。创建时客户端不传块 `id`，由服务端分配（前缀加 12 位十六进制）。种子导入可以指定符合该语法的 id。一个 body 最多 200 块。HTTP 创建频道、讨论、链接、分享时，请求体不得包含资源 `id`。
+资源 id（含块 id、会话 id、授权 id）符合 `^(ch|en|ln|sh|rev|file|blk|se|gr)_[a-z0-9_]{1,40}$`。账号 `id` 使用 actor 语法 `^[a-z][a-z0-9_]{0,63}$`，不是带前缀的资源 id。同一 `body` 内块 id 唯一。创建时客户端不传块 `id`，由服务端分配（前缀加 12 位十六进制）。种子导入可以指定符合该语法的 id。一个 body 最多 200 块。HTTP 创建频道、讨论、链接、分享、会话、授权时，请求体不得包含资源 `id`。创建账号的请求体必须含账号 `id`。
 
 ### 1.3 讨论 entry
 
@@ -62,7 +62,7 @@ v1 一个提供方的全部频道使用同一份能力。客户端不能在创�
 
 作者规则：
 
-- HTTP API 创建的讨论，作者一律是当前令牌的 actor。请求体里的 `author` 字段视为未定义字段，按校验错误拒绝（schema 不允许）。
+- HTTP API 创建的讨论，作者一律是当前令牌的身份。会话令牌用该账号；授权令牌固定为 `{ "id": "grant", "display_name": "临时访问" }`。请求体里的 `author` 字段视为未定义字段，按校验错误拒绝（schema 不允许）。
 - 种子导入可以写入历史作者。种子不是 HTTP 端点。
 - 经分享、scope 为 `comment` 创建的讨论，作者固定为 `{ "id": "share", "display_name": "访客" }`。
 
@@ -127,6 +127,45 @@ v1 一个提供方的全部频道使用同一份能力。客户端不能在创�
 
 无 `revisions` 能力时，频道 `revision` 为 `null`，所有修订路由返回第 4 节的能力错误。
 
+### 1.7 账号 account
+
+账号由**签发它的那个提供方**管理。融合台和其它客户端不为多个提供方建一份总目录。同名人物在三个例子里是三份账号。
+
+| 字段 | 说明 |
+| --- | --- |
+| `id` | actor 语法，登录名 |
+| `display_name` | 1–80 码位 |
+| `provider_role` | `owner`、`member` 或 `guest` |
+| `created_at` | |
+
+口令只存 scrypt 哈希。任何 JSON 响应、发现文档、频道、讨论都不得含 `password` 或 `password_hash`。
+
+`POST /v1/accounts` 仅提供方 `owner`。请求体 `{ "id", "display_name", "provider_role", "password" }`。`password` 8–128 码位。id 已存在则 409 `conflict`。
+
+`GET /v1/accounts` 仅提供方 `owner`，返回 `{ "data": [账号…] }`，无口令字段。
+
+### 1.8 会话 session
+
+长期登录。请求体 `{ "id", "password" }`。成功 201，body 含 `id`（`se_`）、`account`（无口令）、`token`（只此一次）。会话不过期，直到 `DELETE /v1/sessions/{id}`。账号 id 或口令不对：401 `unauthorized`，不说明是哪一项错。
+
+### 1.9 授权 grant
+
+发给调用方的限期 Bearer，不是分享链接。分享仍走 `/s/{token}`，不登录。
+
+| 字段 | 说明 |
+| --- | --- |
+| `id` | 前缀 `gr_` |
+| `channel_id` | |
+| `scope` | `view`、`comment` 或 `edit` |
+| `expires_at` | 必须是未来时间。省略或已过去：400 `validation_error` |
+| `created_at` | |
+| `revoked_at` | |
+| `token` | 只在创建响应里出现 |
+
+`POST /v1/grants` 调用者须为该频道 `owner` 或提供方 `owner`。`view` 只读该频道的频道、讨论、链接和被该频道引用的文件。`comment` 另可发讨论。`edit` 另可改标题和正文、恢复修订、上传文件、建删链接。授权不能改成员、不能建分享、不能删频道、不能建账号。讨论作者见 1.3。
+
+`DELETE /v1/grants/{id}` 由创建者所在账号、频道 `owner` 或提供方 `owner` 撤销。
+
 ## 2. type
 
 语法：`^[a-z][a-z0-9._-]{0,63}$`。不符合为 400 `validation_error`。符合语法但不在下表的值**必须接受**（扩展点）。
@@ -141,16 +180,25 @@ v1 一个提供方的全部频道使用同一份能力。客户端不能在创�
 
 ## 3. 认证与发现
 
-除下列路由外，请求头 `Authorization: Bearer <token>` 必须与提供方配置一致。
+账号存在提供方内部。三种 Bearer，不合成一种：
+
+1. **引导令牌**：参考实现配置的常量（例子为 `demo-token`），映射到提供方 `owner`「融合台」`u_fuse`。融合台继续用它，不必先登录。
+2. **会话**：`POST /v1/sessions` 签发，代表一个账号。
+3. **授权**：`POST /v1/grants` 签发，只覆盖一个频道，且必须有到期时间。
+
+分享链接仍免 Bearer，语义不变。
 
 免认证：
 
 - `GET /v1`
+- `POST /v1/sessions`
 - `GET /s/{token}`
 - `GET /s/{token}/files/{fileId}` 与对应 `HEAD`
 - `POST /s/{token}/entries`
 
-失败：401，`code` 为 `unauthorized`。不要返回 403 来表示缺少令牌。
+其它路由缺少令牌、令牌不匹配、会话已撤销、授权已撤销或已过期：401 `unauthorized`。已通过认证但角色不够：403 `forbidden`。频道存在但当前身份看不见：403，不是 404。
+
+`GET /v1` 不要求令牌。带有效 Bearer 时 `actor` 为该身份；无令牌或令牌无效时 `actor` 为引导账号「融合台」。
 
 若带 `OCP-Version` 且值不是 `1`：400 `unsupported_version`。不带该头则按 v1 处理。
 
@@ -173,6 +221,14 @@ v1 一个提供方的全部频道使用同一份能力。客户端不能在创�
 }
 ```
 
+角色：
+
+- 提供方 `owner`：看见并操作全部频道，可建账号与授权。
+- 提供方 `member`：可建频道；只能访问名册含自己的频道。频道 `owner` 可改正文和成员、建分享、建授权、删频道。频道 `member` 可读、发讨论、在有正文能力时改正文；不能改成员，不能建分享。
+- 提供方 `guest`：不能建频道，不能被设为频道 `owner`。只能访问名册含自己的频道，权限同频道 `guest`：可读、发讨论，不能改正文、成员和分享。
+
+`GET /v1/channels` 只返回当前身份可见的未删除频道（`include_deleted` 仅对能看见该频道的身份生效）。
+
 ## 4. 错误
 
 HTTP 状态与下列 body 同时成立。`Content-Type: application/problem+json`。
@@ -189,7 +245,8 @@ HTTP 状态与下列 body 同时成立。`Content-Type: application/problem+json
 
 | code | status | 何时 |
 | --- | --- | --- |
-| `unauthorized` | 401 | 令牌缺失或不匹配 |
+| `unauthorized` | 401 | 令牌缺失、不匹配、已撤销或已过期；登录账号或口令不对 |
+| `forbidden` | 403 | 已认证但角色不够，或频道存在但当前身份不可见 |
 | `unsupported_version` | 400 | `OCP-Version` 不是 1 |
 | `validation_error` | 400 | 字段不合法。可加 `errors: [{ "path", "message" }]` |
 | `capability_unsupported` | 404 | 路由所需能力为 false。必须带 `capability` |
@@ -291,7 +348,7 @@ HTTP 状态与下列 body 同时成立。`Content-Type: application/problem+json
 { "type": "note", "title": "周会记录", "body": [{ "type": "text", "text": "记录", "format": "plain" }], "members": [] }
 ```
 
-无 `body` 能力时请求不得含非空 `body`，否则 `capability_unsupported`（`capability` 为 `body`）。`members` 省略时，成员为当前 actor 一人，`role` 为 `owner`。
+无 `body` 能力时请求不得含非空 `body`，否则 `capability_unsupported`（`capability` 为 `body`）。`members` 省略时，成员为当前账号一人，`role` 为 `owner`（授权令牌不能建频道）。提供方 `guest` 建频道为 403 `forbidden`。
 
 `GET /v1/channels/{id}`
 
@@ -435,10 +492,10 @@ JSON 视图不含 `capabilities`、`members`、`revision`、修订列表、分�
 
 这些约束只约束本仓库的参考服务端，不是互操作的必选项：
 
-- 数据文件 `store.json` 只含频道、讨论、链接、分享、修订、文件元数据。文件字节只在 `files/` 目录，文件名等于 file id，不写入 JSON。上传边收边写临时 `.part`，成功后再改名为 id；下载用流，不把整文件读进内存。
+- 数据文件 `store.json` 含频道、讨论、链接、分享、修订、文件元数据、账号（含口令哈希）、会话哈希、授权哈希。文件字节只在 `files/` 目录，文件名等于 file id，不写入 JSON。上传边收边写临时 `.part`，成功后再改名为 id；下载用流，不把整文件读进内存。
 - `maxFileBytes` 默认 `64 * 1024 * 1024`，创建应用时可覆盖。
 - 种子只在 `store.json` 不存在时导入
-- 导入顺序：文件、频道（数组顺序）、`edits`（数组顺序）、讨论（数组顺序）、链接。讨论的 `parent_id` 必须指向已经导入的讨论
+- 导入顺序：账号、文件、频道（数组顺序）、`edits`（数组顺序）、讨论（数组顺序）、链接。讨论的 `parent_id` 必须指向已经导入的讨论。种子里的 `password` 只在导入时出现，落盘为哈希。
 - 导入走与 API 相同的校验和修订生成。种子可以指定资源 id 和讨论作者。文件块的 `name`、`media_type`、`size` 以文件记录为准写回；`size` 为 UTF-8 字节长度
 - 笔记种子的 `edits` 按顺序作为正文更新执行，因此至少产生「创建」「编辑」两条修订。第一条修订的正文只有创建时的块
 - 同一进程内的写操作串行执行，避免并发把 `store.json` 盖乱
@@ -453,6 +510,12 @@ JSON 视图不含 `capabilities`、`members`、`revision`、修订列表、分�
 
 ```json
 {
+  "accounts": [
+    { "id": "u_fuse", "display_name": "融合台", "provider_role": "owner", "password": "demo-pass" },
+    { "id": "u_lin", "display_name": "林可", "provider_role": "owner", "password": "demo-pass" },
+    { "id": "u_zhou", "display_name": "周宁", "provider_role": "member", "password": "demo-pass" },
+    { "id": "u_xu", "display_name": "许安", "provider_role": "guest", "password": "demo-pass" }
+  ],
   "channels": [
     {
       "id": "ch_dm_lin_zhou",
@@ -470,7 +533,7 @@ JSON 视图不含 `capabilities`、`members`、`revision`、修订列表、分�
       "members": [
         { "id": "u_lin", "display_name": "林可", "role": "owner" },
         { "id": "u_zhou", "display_name": "周宁", "role": "member" },
-        { "id": "u_xu", "display_name": "许安", "role": "member" }
+        { "id": "u_xu", "display_name": "许安", "role": "guest" }
       ]
     },
     {
@@ -478,7 +541,7 @@ JSON 视图不含 `capabilities`、`members`、`revision`、修订列表、分�
       "type": "room",
       "title": "设计讨论",
       "members": [
-        { "id": "u_xu", "display_name": "许安", "role": "owner" }
+        { "id": "u_lin", "display_name": "林可", "role": "owner" }
       ]
     }
   ],
@@ -529,6 +592,12 @@ JSON 视图不含 `capabilities`、`members`、`revision`、修订列表、分�
 
 ```json
 {
+  "accounts": [
+    { "id": "u_fuse", "display_name": "融合台", "provider_role": "owner", "password": "demo-pass" },
+    { "id": "u_lin", "display_name": "林可", "provider_role": "owner", "password": "demo-pass" },
+    { "id": "u_zhou", "display_name": "周宁", "provider_role": "member", "password": "demo-pass" },
+    { "id": "u_xu", "display_name": "许安", "provider_role": "guest", "password": "demo-pass" }
+  ],
   "channels": [
     {
       "id": "ch_proj",
@@ -558,7 +627,8 @@ JSON 视图不含 `capabilities`、`members`、`revision`、修订列表、分�
       "type": "task",
       "title": "配图导出",
       "members": [
-        { "id": "u_xu", "display_name": "许安", "role": "owner" }
+        { "id": "u_lin", "display_name": "林可", "role": "owner" },
+        { "id": "u_xu", "display_name": "许安", "role": "guest" }
       ],
       "body": [
         { "id": "blk_img", "type": "text", "text": "导出首页用的三张图。", "format": "plain" }
@@ -606,6 +676,12 @@ JSON 视图不含 `capabilities`、`members`、`revision`、修订列表、分�
 
 ```json
 {
+  "accounts": [
+    { "id": "u_fuse", "display_name": "融合台", "provider_role": "owner", "password": "demo-pass" },
+    { "id": "u_lin", "display_name": "林可", "provider_role": "owner", "password": "demo-pass" },
+    { "id": "u_zhou", "display_name": "周宁", "provider_role": "member", "password": "demo-pass" },
+    { "id": "u_xu", "display_name": "许安", "provider_role": "guest", "password": "demo-pass" }
+  ],
   "files": [
     {
       "id": "file_terms",

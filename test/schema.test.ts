@@ -14,12 +14,20 @@ ajv.addSchema(schema);
 const validateCh = ajv.getSchema('https://open-channel.local/schema/ocp.v1.schema.json#/$defs/channel')!;
 const validateEntry = ajv.getSchema('https://open-channel.local/schema/ocp.v1.schema.json#/$defs/entry')!;
 const validateLink = ajv.getSchema('https://open-channel.local/schema/ocp.v1.schema.json#/$defs/link')!;
+const validateAccount = ajv.getSchema('https://open-channel.local/schema/ocp.v1.schema.json#/$defs/accountPublic')!;
+const validateGrant = ajv.getSchema('https://open-channel.local/schema/ocp.v1.schema.json#/$defs/grantPublic')!;
 
 function loadFixture(rel: string) {
   return JSON.parse(fs.readFileSync(path.join(root, 'schema/fixtures', rel), 'utf8'));
 }
 
 describe('schema fixtures', () => {
+  it('valid account', () => {
+    assert.equal(validateAccount(loadFixture('valid/account.json')), true);
+  });
+  it('valid grant', () => {
+    assert.equal(validateGrant(loadFixture('valid/grant.json')), true);
+  });
   it('valid channel', () => {
     assert.equal(validateCh(loadFixture('valid/channel.json')), true);
   });
