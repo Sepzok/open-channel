@@ -10,12 +10,15 @@ This repository is a locally runnable reference implementation and examples, pub
 
 ```bash
 npm install
-npm run dev          # chat(8781), tasks(8782), notes(8783), console(8780)
+npm run dev          # hub(8779) + chat/tasks/notes/native/walk/console
 ```
+
+Open the hub first: `http://127.0.0.1:8779`. It lists each genre surface and the fusion console, and shows whether each process is up.
 
 Or start separately:
 
 ```bash
+npm run dev:hub
 npm run dev:chat
 npm run dev:tasks
 npm run dev:notes
@@ -24,8 +27,9 @@ npm run dev:native
 npm run dev:walk
 ```
 
-In a browser:
+Addresses:
 
+- Hub `http://127.0.0.1:8779`
 - Fusion console `http://127.0.0.1:8780`
 - Chat `http://127.0.0.1:8781`
 - Tasks `http://127.0.0.1:8782`
@@ -66,6 +70,7 @@ Protocol: [docs/SPEC.md](docs/SPEC.md) (canonical Chinese) / [docs/en/SPEC.md](d
 - `@open-channel/match` — authoritative match process (caller supplies `reduce` / `encode`)
 - `@open-channel/sdk` — TypeScript client (one origin; multi-provider via multiple `Client`s + `target_url`)
 - `sdk/python/openchannel` — Python client (stdlib `urllib`)
+- `examples/hub` — local examples directory (open this first)
 - `examples/chat|tasks|notes` — three reference providers
 - `examples/walk` — thin match caller (two players walk); do not copy gameplay into the kernel
 - `examples/native` — ticket adapter without `createApp` (third-party server starting point)

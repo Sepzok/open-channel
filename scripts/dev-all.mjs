@@ -6,9 +6,12 @@ const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const tsx = path.join(root, 'node_modules', 'tsx', 'dist', 'cli.mjs');
 
 const children = [
+  ['hub', 'examples/hub/index.ts'],
   ['chat', 'examples/chat/index.ts'],
   ['tasks', 'examples/tasks/index.ts'],
   ['notes', 'examples/notes/index.ts'],
+  ['native', 'examples/native/index.ts'],
+  ['walk', 'examples/walk/index.ts'],
   ['console', 'examples/console/index.ts'],
 ].map(([name, entry]) => {
   const child = spawn(process.execPath, [tsx, path.join(root, entry)], {

@@ -10,12 +10,15 @@ Open Channel Protocol（OCP）用统一的资源模型描述**单个提供方**�
 
 ```bash
 npm install
-npm run dev          # 同时启动会话(8781)、任务(8782)、笔记(8783)、融合台(8780)
+npm run dev          # 汇总入口(8779) + 会话/任务/笔记/工单/走动/融合台
 ```
+
+浏览器先开汇总入口：`http://127.0.0.1:8779`。页上列出各品类展示页与融合台，并显示是否已启动。
 
 也可分别启动：
 
 ```bash
+npm run dev:hub
 npm run dev:chat
 npm run dev:tasks
 npm run dev:notes
@@ -24,8 +27,9 @@ npm run dev:native
 npm run dev:walk
 ```
 
-浏览器：
+各进程地址：
 
+- 汇总入口 `http://127.0.0.1:8779`
 - 融合台 `http://127.0.0.1:8780`
 - 会话 `http://127.0.0.1:8781`
 - 任务 `http://127.0.0.1:8782`
@@ -66,6 +70,7 @@ npm run test:e2e
 - `@open-channel/match` — 权威对局进程（调用方提供 `reduce` / `encode`）
 - `@open-channel/sdk` — TypeScript 客户端（单 origin；跨提供方用多个 `Client` + `target_url`）
 - `sdk/python/openchannel` — Python 客户端（标准库 `urllib`）
+- `examples/hub` — 本地例子汇总入口（默认先开这一页）
 - `examples/chat|tasks|notes` — 三个参考提供方
 - `examples/walk` — 对局调用方薄例子（两人走动）；不要从这里抄玩法进内核
 - `examples/native` — 不引用 `createApp` 的工单适配（第三方服务端起点）

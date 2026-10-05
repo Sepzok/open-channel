@@ -27,7 +27,7 @@ Source is MIT-licensed. Do not run `npm publish`, upload to PyPI, or deploy a pu
 
 ## Copy
 
-User-facing UI follows the active locale. Chinese uses industry two-character terms (频道、讨论、链接、修订、分享); English uses matching industry terms (channel, discussion, link, revision, share). Console labels follow `docs/PLAN.md` / `docs/en/PLAN.md`. Each example origin home page matches that product genre (messenger, project board, document, ticket, room stage)—do not reuse fusion-console section bands. Buttons and section bands use two-or-more-character (or multi-word English) industry labels—not single Chinese characters as labels.
+User-facing UI follows the active locale. Chinese uses industry two-character terms (频道、讨论、链接、修订、分享); English uses matching industry terms (channel, discussion, link, revision, share). Console labels follow `docs/PLAN.md` / `docs/en/PLAN.md`. The hub (`examples/hub`, default 8779) is an examples directory—not a second fusion console. Each example origin home page matches that product genre (messenger, project board, document, ticket, room stage)—do not reuse fusion-console section bands. Buttons and section bands use two-or-more-character (or multi-word English) industry labels—not single Chinese characters as labels.
 
 Implementation plans and Agent “out of scope” lists are not user intent; the user’s own sentences win. Extra prohibitions or narrowed scope in a plan must be changed, then reported in the reply.
 

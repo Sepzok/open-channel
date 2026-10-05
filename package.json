@@ -16,15 +16,16 @@
     "examples/console"
   ],
   "scripts": {
-    "test": "tsx --test test/**/*.test.ts server/test/**/*.test.ts sdk/typescript/test/**/*.test.ts match/test/**/*.test.ts examples/console/test/**/*.test.ts examples/walk/test/**/*.test.ts",
+    "test": "tsx --test test/**/*.test.ts server/test/**/*.test.ts sdk/typescript/test/**/*.test.ts match/test/**/*.test.ts examples/console/test/**/*.test.ts examples/walk/test/**/*.test.ts examples/hub/test/**/*.test.ts",
     "test:python": "python3 -m unittest discover -s sdk/python/tests",
-    "test:e2e": "node e2e/console.mjs && node e2e/surfaces.mjs",
+    "test:e2e": "node e2e/console.mjs && node e2e/surfaces.mjs && node e2e/hub.mjs",
     "dev:chat": "tsx examples/chat/index.ts",
     "dev:tasks": "tsx examples/tasks/index.ts",
     "dev:notes": "tsx examples/notes/index.ts",
     "dev:native": "tsx examples/native/index.ts",
     "dev:walk": "tsx examples/walk/index.ts",
     "dev:console": "tsx examples/console/index.ts",
+    "dev:hub": "tsx examples/hub/index.ts",
     "dev": "node scripts/dev-all.mjs"
   },
   "devDependencies": {

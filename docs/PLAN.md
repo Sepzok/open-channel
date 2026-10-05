@@ -50,6 +50,7 @@ server/                  包名 @open-channel/server
 examples/chat/           端口 8781，种子见 SPEC 附录 A
 examples/tasks/          端口 8782
 examples/notes/          端口 8783
+examples/hub/            端口 8779，例子汇总入口
 examples/console/        端口 8780，融合台
 examples/walk/           端口 8785，对局调用方薄例子
 examples/native/         独立适配例子，不引用 createApp
@@ -57,6 +58,8 @@ match/                   包名 @open-channel/match，权威对局进程
 examples/providers.json
 docs/ADAPT.md            已有产品如何暴露 OCP、多提供方客户端如何关联
 e2e/console.mjs
+e2e/surfaces.mjs
+e2e/hub.mjs
 README.md
 AGENTS.md
 ```
@@ -107,7 +110,7 @@ Python 用同名 snake_case。查询参数、路径、请求体与 SPEC 相同�
 
 ## 融合台
 
-浏览器访问融合台 `8780`，以及各例子进程的根路径展示页（会话 `8781`、任务 `8782`、笔记 `8783`、工单适配 `8784`、走动 `8785`）。融合台令牌留在服务端。例子展示页用种子账号会话进入（口令见 README），页面源码不得带 `demo-token`。
+浏览器先开汇总入口 `8779`（`examples/hub`），再进融合台 `8780` 与各例子根路径展示页（会话 `8781`、任务 `8782`、笔记 `8783`、工单适配 `8784`、走动 `8785`）。汇总页是目录，不是第二套融合台；探活只对目标 `GET /`，不带令牌。融合台令牌留在服务端。例子展示页用种子账号会话进入（口令见 README），页面源码不得带 `demo-token`。`npm run dev` 同时拉起汇总入口与上述进程。
 
 - `GET /api/channels` 聚合三个提供方。某个来源连接失败时，该来源标记为不可用，其它来源照常返回。这是显式状态，不是静默改用缓存。
 - `GET /api/channels/:provider/:id` 返回频道、讨论、链接；仅当 `capabilities.revisions` 为真才请求修订列表，否则响应里 `revisions: null`（区别于空数组「没有历史」）。
@@ -188,6 +191,7 @@ Python 用同名 snake_case。查询参数、路径、请求体与 SPEC 相同�
 
 14. **双语界面**：默认路径仍为中文（现有断言不变）。`?lang=en`（或分享页 `Accept-Language: en`）时壳文案为英文，种子样例字符串（频道标题、提供方名、讨论、正文等）按对照表显示英译；`seed.json` 仍为中文。`resolveLocale` 优先 `?lang=`，再存档 locale（浏览器），再 `Accept-Language`，默认 `zh`。不可用聚合行使用稳定类型（如 `unavailable`）与空标题，由页面按 locale 渲染「来源不可用 / Source unavailable」。英文筛选「Home」应命中「首页文案」对应频道。
 15. **例子展示页**：`GET /` 在 chat/tasks/notes 上为 HTML 且含对应品类骨架（`app-chat` / `pm-nav` / `doc-paper`）与种子标题（发布小组、官网改版、接口草案）。未设 `surface` 的 `createApp` 对 `GET /` 仍为问题 JSON `not_found`。`GET /v1/channels` 无令牌仍 401。聊天页 HTML 不含融合台 `<title>`、不含 `section-band`、不含 `demo-token`。任务页含「撰写中」。笔记页含「可寻址的容器」。`examples/native` 的 `GET /` 含工单号 `T-100` 与「验收清单」，源码仍不含 `createApp`。走动页含 `playfield` 与「走动房间」；走动例子把入场 `url` 配成 `wsAddress`。群组分享 HTML 含 `message-bubble`。E2E 用本机 Chrome 点开会话页发送一条消息后该句出现在气泡里。
+16. **汇总入口**：`examples/hub` 的 `GET /` 含「本地例子入口 / Local examples」、指向 8780–8785 的链与品类标签（操作台、即时通讯、项目台、文稿、工单、房间舞台）；不含 `section-band`、不含 `demo-token`。`GET /api/status` 对 HTML 首页返回 `ok: true`，对未监听或非 HTML 返回 `ok: false`。E2E 从汇总页点「示例会话」进入会话展示页。
 
 SDK 的 `resolveShare` 发送 `Accept: application/json`。
 
@@ -213,6 +217,7 @@ SDK 的 `resolveShare` 发送 `Accept: application/json`。
 - 不可用行依赖聚合载荷里写死的中文标题
 - 例子展示页套融合台通栏分区，或把未设 surface 的 `GET /` 改成 HTML
 - 展示页 HTML 写入 `demo-token`
+- 汇总入口做成第二套融合台，或探活请求带令牌
 
 ## 实现顺序
 
