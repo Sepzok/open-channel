@@ -142,6 +142,8 @@ export type Seed = {
   links?: Partial<Link> & { id: string; type: string; source_id: string }[];
 };
 
+export type SurfaceKind = 'chat' | 'tasks' | 'notes';
+
 export type AppOptions = {
   providerId: string;
   providerName: string;
@@ -154,4 +156,7 @@ export type AppOptions = {
   maxFileBytes?: number;
   liveUrl?: string;
   liveSecret?: string;
+  /** Browser home page for this example process. Unset → GET / stays not_found. */
+  surface?: SurfaceKind;
+  renderHome?: (ctx: { locale: 'zh' | 'en'; snapshot: unknown }) => string;
 };

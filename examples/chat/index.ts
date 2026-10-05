@@ -26,6 +26,7 @@ const options = {
   seed,
   dataDir,
   publicOrigin: 'http://127.0.0.1',
+  surface: 'chat' as const,
 };
 const server = createApp(options);
 

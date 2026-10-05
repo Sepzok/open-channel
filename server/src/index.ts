@@ -29,6 +29,7 @@ import { signAdmission } from '@open-channel/match';
 import { sharePageHtml } from './html.js';
 import { parseListFilterQuery } from './scimFilter.js';
 import { resolveLocale } from './uiLocale.js';
+import { buildSurfaceSnapshot, renderSurfacePage } from './surface.js';
 import type { FileMeta } from './types.js';
 import {
   canCreateAccount,
@@ -343,6 +344,26 @@ export function createApp(options: AppOptions): http.Server {
     const pathname = url.pathname;
 
     try {
+      if ((method === 'GET' || method === 'HEAD') && pathname === '/') {
+        if (options.surface || options.renderHome) {
+          const locale = resolveLocale({
+            queryLang: url.searchParams.get('lang'),
+            acceptLanguage: Array.isArray(req.headers['accept-language'])
+              ? req.headers['accept-language'][0]
+              : req.headers['accept-language'],
+          });
+          const snapshot = buildSurfaceSnapshot(store, options);
+          const html = options.renderHome
+            ? options.renderHome({ locale, snapshot })
+            : renderSurfacePage({ kind: options.surface!, locale, snapshot });
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end(method === 'HEAD' ? undefined : html);
+          return;
+        }
+        sendProblem(res, 'not_found');
+        return;
+      }
+
       // GET /v1
       if (method === 'GET' && pathname === '/v1') {
         const tok = bearerToken(req);
@@ -1402,7 +1423,8 @@ export function createApp(options: AppOptions): http.Server {
   return server;
 }
 
-export type { AppOptions, Capabilities, Seed } from './types.js';
+export type { AppOptions, Capabilities, Seed, SurfaceKind } from './types.js';
+export { buildSurfaceSnapshot, renderSurfacePage, type SurfaceSnapshot } from './surface.js';
 export { bindHost, firstLanIPv4, originAfterListen } from './listen.js';
 export { parseByteRange } from './util.js';
 export {

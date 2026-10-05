@@ -5,6 +5,8 @@ import { Client } from '@open-channel/sdk';
 import { createMatchHost, sendFrame } from '@open-channel/match';
 import { LIVE_CAPS, loadSeed, startServer } from '../../../server/test/helpers.js';
 import { encodeWalk, initialWalk, reduceWalk, walkShouldEnd } from '../game.js';
+import { encodeOcm1 } from '../ocm1.js';
+import { encodeFrame } from '@open-channel/match';
 
 function waitFor(fn: () => Promise<boolean> | boolean, timeoutMs = 4000): Promise<void> {
   const start = Date.now();
@@ -25,6 +27,25 @@ function waitFor(fn: () => Promise<boolean> | boolean, timeoutMs = 4000): Promis
 }
 
 describe('walk example caller', () => {
+  it('browser encoder matches match.encodeFrame', () => {
+    const payload = Buffer.from('ticket');
+    const a = encodeFrame({
+      kind: 'join',
+      seq: 0,
+      channelId: 'ch_walk',
+      actorId: 'u_lin',
+      payload,
+    });
+    const b = encodeOcm1({
+      kind: 'join',
+      seq: 0,
+      channelId: 'ch_walk',
+      actorId: 'u_lin',
+      payload: new Uint8Array(payload),
+    });
+    assert.equal(Buffer.from(b).equals(a), true);
+  });
+
   it('moves two actors then writes a discussion', async () => {
     const secret = 'walk-test-secret';
     let posted = false;

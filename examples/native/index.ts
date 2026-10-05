@@ -1,5 +1,6 @@
 import http from 'node:http';
 import { randomBytes } from 'node:crypto';
+import { renderTicketPage } from './page.js';
 
 const port = Number(process.env.PORT ?? 8784);
 const host = process.env.HOST === '0.0.0.0' ? '0.0.0.0' : '127.0.0.1';
@@ -152,6 +153,14 @@ const server = http.createServer(async (req, res) => {
   const path = url.pathname;
 
   try {
+    if ((method === 'GET' || method === 'HEAD') && path === '/') {
+      const locale = url.searchParams.get('lang') === 'en' ? 'en' : 'zh';
+      const html = renderTicketPage({ locale, channel, entries });
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(method === 'HEAD' ? undefined : html);
+      return;
+    }
+
     if (method === 'GET' && path === '/v1') {
       sendJson(res, 200, {
         protocol: 'ocp',

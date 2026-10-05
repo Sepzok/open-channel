@@ -31,6 +31,18 @@ export type UiMessages = {
   langZh: string;
   langEn: string;
   typeLabels: Record<string, string>;
+  enterAs: string;
+  signedIn: string;
+  conversations: string;
+  composeMessage: string;
+  projects: string;
+  tasks: string;
+  status: string;
+  notesNav: string;
+  annotations: string;
+  ticketId: string;
+  walkHint: string;
+  walkStart: string;
 };
 
 const ZH: UiMessages = {
@@ -63,6 +75,18 @@ const ZH: UiMessages = {
   shareSend: '发送',
   langZh: '中文',
   langEn: 'English',
+  enterAs: '进入',
+  signedIn: '当前身份',
+  conversations: '会话',
+  composeMessage: '写下消息',
+  projects: '项目',
+  tasks: '任务',
+  status: '状态',
+  notesNav: '笔记',
+  annotations: '批注',
+  ticketId: '工单号',
+  walkHint: '方向键移动林可，W A S D 移动周宁',
+  walkStart: '开始走动',
   typeLabels: {
     dm: '私聊',
     group: '群组',
@@ -103,6 +127,18 @@ const EN: UiMessages = {
   shareSend: 'Send',
   langZh: '中文',
   langEn: 'English',
+  enterAs: 'Enter',
+  signedIn: 'Signed in as',
+  conversations: 'Conversations',
+  composeMessage: 'Write a message',
+  projects: 'Projects',
+  tasks: 'Tasks',
+  status: 'Status',
+  notesNav: 'Notes',
+  annotations: 'Annotations',
+  ticketId: 'Ticket',
+  walkHint: 'Arrow keys move Lin Ke; W A S D move Zhou Ning',
+  walkStart: 'Start walking',
   typeLabels: {
     dm: 'DM',
     group: 'Group',
@@ -126,6 +162,7 @@ export const SEED_CHANNEL_TITLES: Record<string, { zh: string; en: string }> = {
   ch_draft: { zh: '接口草案', en: 'API draft' },
   ch_glossary: { zh: '术语表', en: 'Glossary' },
   ch_walk: { zh: '走动房间', en: 'Walk room' },
+  ch_accept: { zh: '验收清单', en: 'Acceptance list' },
 };
 
 /** Exact Chinese seed strings → English for UI display. Disk and API stay Chinese. */
@@ -133,6 +170,8 @@ export const SEED_TEXT_EN: Record<string, string> = {
   '示例会话': 'Sample chat',
   '示例任务': 'Sample tasks',
   '示例笔记': 'Sample notes',
+  '工单适配': 'Ticket adapter',
+  '对局房间': 'Match room',
   '融合台': 'Fusion Console',
   '林可': 'Lin Ke',
   '周宁': 'Zhou Ning',
@@ -158,6 +197,9 @@ export const SEED_TEXT_EN: Record<string, string> = {
   '频道、讨论、链接是三条基本记录。': 'Channel, discussion, and link are the three basic records.',
   '这里的容器包括会话、任务和笔记。': 'Container here includes chat, tasks, and notes.',
   '频道\n讨论\n链接\n': 'channel\ndiscussion\nlink\n',
+  '先对协议再写适配。': 'Match the protocol first, then write the adapter.',
+  '对局已结束': 'Match ended',
+  '验收清单': 'Acceptance list',
 };
 
 export function displaySeedText(text: string, locale: Locale): string {

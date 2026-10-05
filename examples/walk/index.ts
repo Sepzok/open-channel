@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { createApp, bindHost, originAfterListen } from '@open-channel/server';
 import { createMatchHost } from '@open-channel/match';
 import { encodeWalk, initialWalk, reduceWalk, walkShouldEnd } from './game.js';
+import { renderWalkPage } from './page.js';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT ?? 8785);
@@ -58,8 +59,9 @@ const options = {
   seed,
   dataDir,
   publicOrigin: optionsHolder.publicOrigin,
-  liveUrl: match.address,
+  liveUrl: match.wsAddress ?? match.address,
   liveSecret: secret,
+  renderHome: (ctx) => renderWalkPage(ctx),
 };
 const server = createApp(options);
 

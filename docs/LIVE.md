@@ -73,7 +73,7 @@
 - 更接近可丢数据报时，第三方可把同一帧放到 WebRTC 不可靠数据通道；本仓不实现 WebRTC。
 - 这不是 OCP 的能力，也不把 WebSocket / WebRTC 写进 `/v1`。入场仍是 `POST .../admissions`，`url` 由提供方配置为 `udp://` 或 `ws://`。
 
-本仓参考实现同时听 UDP 与 WebSocket；走动例子的 `liveUrl` 仍用 UDP，进程日志会打印 `wsAddress` 供浏览器对接。
+本仓参考实现同时听 UDP 与 WebSocket；走动例子面向浏览器，把 `liveUrl` 配成 `wsAddress`。UDP 地址仍在进程日志里，供原生客户端对接。
 
 ## 禁止（薄路径）
 

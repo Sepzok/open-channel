@@ -43,6 +43,9 @@ export function sharePageHtml(opts: {
           .map(([k, v]) => `<div>${escapeHtml(k)}：${escapeHtml(displaySeedText(String(v), locale))}</div>`)
           .join('')}</section>`
       : '';
+  const isIm = ['dm', 'group', 'room'].includes(channel.type);
+  const isPm = channel.type === 'project' || channel.type === 'task';
+  const skin = isIm ? 'share-im' : isPm ? 'share-pm' : 'share-doc';
   const entriesHtml = entries
     .filter((e) => e.deleted_at === null)
     .map((e) => {
@@ -58,7 +61,8 @@ export function sharePageHtml(opts: {
           .filter(Boolean)
           .join('\n'),
       );
-      return `<article class="entry"><div class="author">${author}</div><div class="text">${text}</div></article>`;
+      const cls = isIm ? 'entry message-bubble' : 'entry';
+      return `<article class="${cls}"><div class="author">${author}</div><div class="text">${text}</div></article>`;
     })
     .join('\n');
 
@@ -89,8 +93,8 @@ document.getElementById('share-send').addEventListener('click', async () => {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(channelTitle)}</title>
 <style>
-  body { margin: 0; font-family: system-ui, sans-serif; background: #f4f5f7; color: #1a1a1a; }
-  main { max-width: 720px; margin: 0 auto; padding: 24px 16px 48px; background: #fff; min-height: 100vh; box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, sans-serif; color: #1a1a1a; }
+  main { max-width: 720px; margin: 0 auto; padding: 24px 16px 48px; min-height: 100vh; box-sizing: border-box; }
   h1 { font-size: 1.5rem; margin: 0 0 16px; }
   .entry { border-top: 1px solid #e2e5ea; padding: 12px 0; }
   .author { font-size: 0.875rem; color: #5c6370; margin-bottom: 4px; }
@@ -98,9 +102,17 @@ document.getElementById('share-send').addEventListener('click', async () => {
   textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #c5cad3; background: #fff; margin-bottom: 8px; }
   button { padding: 8px 16px; border: 1px solid #1d4e89; background: #1d4e89; color: #fff; cursor: pointer; }
   a { color: #1d4e89; }
+  body.share-im { background: #e8eef5; }
+  body.share-im main { background: transparent; max-width: 560px; }
+  body.share-im .message-bubble { background: #fff; border: none; border-radius: 16px; padding: 8px 12px; margin: 8px 0; }
+  body.share-pm { background: #eef1f4; }
+  body.share-pm main { background: #fff; border-radius: 8px; margin-top: 16px; }
+  body.share-doc { background: #eceff3; }
+  body.share-doc main { background: #fff; padding: 40px 48px; }
+  body.share-doc h1 { font-size: 2rem; }
 </style>
 </head>
-<body>
+<body class="${skin}">
 <main>
   <h1>${escapeHtml(channelTitle)}</h1>
   ${extHtml}

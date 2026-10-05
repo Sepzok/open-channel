@@ -20,9 +20,20 @@ npm run dev:chat
 npm run dev:tasks
 npm run dev:notes
 npm run dev:console
+npm run dev:native
+npm run dev:walk
 ```
 
-Open only the console in a browser: `http://127.0.0.1:8780`. All three provider tokens are `demo-token` (provider owner “融合台”). Seed account passwords are `demo-pass`; accounts are issued per provider—the console does not keep a global directory. `demo-token` and `demo-pass` are for loopback only. Do not use them with `HOST=0.0.0.0` or any non-loopback bind; replace them with tokens and passwords you issue. Default bind is loopback; for LAN set `HOST=0.0.0.0` and change the demo credentials. File downloads support `Range`; the reference default max file size is 64MiB.
+In a browser:
+
+- Fusion console `http://127.0.0.1:8780`
+- Chat `http://127.0.0.1:8781`
+- Tasks `http://127.0.0.1:8782`
+- Notes `http://127.0.0.1:8783`
+- Ticket adapter `http://127.0.0.1:8784`
+- Walk room `http://127.0.0.1:8785`
+
+All three provider tokens are `demo-token` (provider owner “融合台”). Seed account passwords are `demo-pass`; accounts are issued per provider—the console does not keep a global directory. Example surfaces sign in with the session password and must not embed `demo-token`. `demo-token` and `demo-pass` are for loopback only. Do not use them with `HOST=0.0.0.0` or any non-loopback bind; replace them with tokens and passwords you issue. Default bind is loopback; for LAN set `HOST=0.0.0.0` and change the demo credentials. File downloads support `Range`; the reference default max file size is 64MiB.
 
 ## Tests
 

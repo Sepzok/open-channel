@@ -71,6 +71,8 @@ export async function startServer(
     maxFileBytes: partial.maxFileBytes,
     liveUrl: partial.liveUrl,
     liveSecret: partial.liveSecret,
+    surface: partial.surface,
+    renderHome: partial.renderHome,
   });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const addr = server.address();

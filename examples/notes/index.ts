@@ -26,6 +26,7 @@ const options = {
   seed,
   dataDir,
   publicOrigin: 'http://127.0.0.1',
+  surface: 'notes' as const,
 };
 const server = createApp(options);
 

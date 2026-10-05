@@ -73,7 +73,7 @@ Frames are defined with datagram semantics; carriage may vary:
 - Closer to droppable datagrams, third parties may put the same frames on an unreliable WebRTC data channel; this repo does not implement WebRTC.
 - This is not an OCP capability, and WebSocket / WebRTC are not written into `/v1`. Admission remains `POST .../admissions`; providers configure `url` as `udp://` or `ws://`.
 
-The reference host listens on both UDP and WebSocket; the walk example’s `liveUrl` still uses UDP; process logs print `wsAddress` for browser wiring.
+The reference host listens on both UDP and WebSocket; the walk example is browser-facing and sets `liveUrl` to `wsAddress`. The UDP address is still logged for native clients.
 
 ## Forbidden (thin paths)
 

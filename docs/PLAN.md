@@ -107,7 +107,7 @@ Python 用同名 snake_case。查询参数、路径、请求体与 SPEC 相同�
 
 ## 融合台
 
-浏览器只访问 8780。令牌留在服务端。
+浏览器访问融合台 `8780`，以及各例子进程的根路径展示页（会话 `8781`、任务 `8782`、笔记 `8783`、工单适配 `8784`、走动 `8785`）。融合台令牌留在服务端。例子展示页用种子账号会话进入（口令见 README），页面源码不得带 `demo-token`。
 
 - `GET /api/channels` 聚合三个提供方。某个来源连接失败时，该来源标记为不可用，其它来源照常返回。这是显式状态，不是静默改用缓存。
 - `GET /api/channels/:provider/:id` 返回频道、讨论、链接；仅当 `capabilities.revisions` 为真才请求修订列表，否则响应里 `revisions: null`（区别于空数组「没有历史」）。
@@ -117,7 +117,17 @@ Python 用同名 snake_case。查询参数、路径、请求体与 SPEC 相同�
 - `POST .../links` 把另一方频道写成 `target_url`（`channelResourceUrl`），不是 `target_id`。详情里为每条链接附 `resolved`（匹配到的提供方与频道 id，或 `null`）。
 - 文件经融合台反代，页面不直接拿提供方令牌。同提供方 `target_id` 与已 `resolved` 的 `target_url` 在页面上可点开对应频道。
 
-界面是浅色操作台，自定义按钮和输入框，不用浏览器默认外观。分区用通栏标题（正文、讨论、链接、修订、分享），不做成卡片堆。没有的能力不渲染该区。
+界面是浅色操作台，自定义按钮和输入框，不用浏览器默认外观。分区用通栏标题（正文、讨论、链接、修订、分享），不做成卡片堆。没有的能力不渲染该区。融合台保持操作台品类，不要改成落地页。
+
+各例子 `GET /`（未设 `surface` / `renderHome` 时仍为问题响应）按产品品类排展示页，不套融合台通栏分区：
+
+- 会话：即时通讯（会话列表 + 气泡）
+- 任务：项目台（项目 / 任务行 + 状态）
+- 笔记：文稿（正文 + 批注 + 修订）
+- 走动：房间舞台（格子场地 + 选人入场）
+- 工单适配：工单（工单号 + 评论）
+
+分享 HTML 按频道 `type` 用同一套品类皮肤（会话气泡 / 任务单 / 文稿）。
 
 标签（中 / 英）：
 
@@ -177,6 +187,7 @@ Python 用同名 snake_case。查询参数、路径、请求体与 SPEC 相同�
 13. 跨提供方关联与独立适配：`parseChannelResourceUrl('https://example.com/spec')` 为 `null`；`http://127.0.0.1:9/v1/channels/ch_proj` 解析出 origin 与 `ch_proj`。对笔记 `ch_draft` `POST` `type=references` 且 `target_url` 为任务提供方的频道资源 URL，随后 `GET` 该链接仍是 `target_url`、没有 `target_id`。`ftp://x` 创建链接为 400。融合台打开「接口草案」，点「关联」选「首页文案」，「其它」出现该标题；刷新后再打开仍在；点它进入任务提供方频道且可见「撰写中」。`examples/native` 源码不含 `createApp` 与 `@open-channel/server`；`GET /v1` 的 capabilities 与频道 `ext.native_id` 能读回；对 native 与 notes 都跑同一套发现 + 链接形状黑盒。native 未声明的修订（含嵌套 id 与 restore）、PATCH 正文、分享集合不得返回 `{ data: [] }`；`parent_id` 为 `threads_unsupported`；列表 `filter` 为 400 不是未筛选 200；`GET /s/{token}` 为 `share_unavailable`。
 
 14. **双语界面**：默认路径仍为中文（现有断言不变）。`?lang=en`（或分享页 `Accept-Language: en`）时壳文案为英文，种子样例字符串（频道标题、提供方名、讨论、正文等）按对照表显示英译；`seed.json` 仍为中文。`resolveLocale` 优先 `?lang=`，再存档 locale（浏览器），再 `Accept-Language`，默认 `zh`。不可用聚合行使用稳定类型（如 `unavailable`）与空标题，由页面按 locale 渲染「来源不可用 / Source unavailable」。英文筛选「Home」应命中「首页文案」对应频道。
+15. **例子展示页**：`GET /` 在 chat/tasks/notes 上为 HTML 且含对应品类骨架（`app-chat` / `pm-nav` / `doc-paper`）与种子标题（发布小组、官网改版、接口草案）。未设 `surface` 的 `createApp` 对 `GET /` 仍为问题 JSON `not_found`。`GET /v1/channels` 无令牌仍 401。聊天页 HTML 不含融合台 `<title>`、不含 `section-band`、不含 `demo-token`。任务页含「撰写中」。笔记页含「可寻址的容器」。`examples/native` 的 `GET /` 含工单号 `T-100` 与「验收清单」，源码仍不含 `createApp`。走动页含 `playfield` 与「走动房间」；走动例子把入场 `url` 配成 `wsAddress`。群组分享 HTML 含 `message-bubble`。E2E 用本机 Chrome 点开会话页发送一条消息后该句出现在气泡里。
 
 SDK 的 `resolveShare` 发送 `Accept: application/json`。
 
@@ -200,6 +211,8 @@ SDK 的 `resolveShare` 发送 `Accept: application/json`。
 - 独立适配例子引用 `@open-channel/server` / `createApp`
 - 独立适配对未声明能力返回空列表，或忽略 `filter` 仍 200
 - 不可用行依赖聚合载荷里写死的中文标题
+- 例子展示页套融合台通栏分区，或把未设 surface 的 `GET /` 改成 HTML
+- 展示页 HTML 写入 `demo-token`
 
 ## 实现顺序
 

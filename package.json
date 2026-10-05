@@ -18,7 +18,7 @@
   "scripts": {
     "test": "tsx --test test/**/*.test.ts server/test/**/*.test.ts sdk/typescript/test/**/*.test.ts match/test/**/*.test.ts examples/console/test/**/*.test.ts examples/walk/test/**/*.test.ts",
     "test:python": "python3 -m unittest discover -s sdk/python/tests",
-    "test:e2e": "node e2e/console.mjs",
+    "test:e2e": "node e2e/console.mjs && node e2e/surfaces.mjs",
     "dev:chat": "tsx examples/chat/index.ts",
     "dev:tasks": "tsx examples/tasks/index.ts",
     "dev:notes": "tsx examples/notes/index.ts",

@@ -110,7 +110,7 @@ Python uses the same names in snake_case. Query parameters, paths, and bodies ma
 
 ## Fusion console
 
-The browser only talks to 8780. Tokens stay on the server.
+The browser opens the fusion console on 8780 and each example process’s home page (chat 8781, tasks 8782, notes 8783, ticket adapter 8784, walk 8785). Console tokens stay on the server. Example surfaces enter with seed-account sessions (password in README); page source must not include `demo-token`.
 
 - `GET /api/channels` aggregates three providers. If one origin fails to connect, that origin is marked unavailable and the others still return. Explicit state—not silent cache fallback.
 - `GET /api/channels/:provider/:id` returns channel, discussion, links; revision list is requested only when `capabilities.revisions` is true, else response `revisions: null` (distinct from empty array “no history”).
@@ -120,7 +120,17 @@ The browser only talks to 8780. Tokens stay on the server.
 - `POST .../links` writes the other channel as `target_url` (`channelResourceUrl`), not `target_id`. Detail attaches `resolved` per link (matched provider + channel id, or `null`).
 - Files are proxied through the console; the page never holds provider tokens. Same-provider `target_id` and resolved `target_url` open the corresponding channel in the UI.
 
-The UI is a light ops console with custom buttons and inputs—not browser default chrome. Sections use full-width title bands (body, discussion, links, revisions, shares), not card stacks. Missing capabilities do not render that section.
+The UI is a light ops console with custom buttons and inputs—not browser default chrome. Sections use full-width title bands (body, discussion, links, revisions, shares), not card stacks. Missing capabilities do not render that section. The console stays an ops console—do not turn it into a marketing landing.
+
+Each example `GET /` (still a problem response when `surface` / `renderHome` is unset) is a **showcase** for that product genre, not the fusion console bands:
+
+- Chat: messenger (conversation list + bubbles)
+- Tasks: project board (project / task rows + status)
+- Notes: document (body + annotations + revisions)
+- Walk: room stage (grid + join)
+- Native adapter: ticket (ticket id + comments)
+
+Share HTML uses the same genre skin from channel `type` (bubbles / task sheet / article).
 
 ### Labels (zh / en)
 
@@ -178,6 +188,7 @@ Mechanisms that must appear (each with assertions—not only HTTP 200):
 12. Custom fields and SCIM `filter`: schema allows numeric `ext`; nested objects and illegal keys fail. After create, GET still returns number. `filter=ext.artist eq "林可"` hits; AND / same-key OR / cross-key parenthesized OR / `ne` (missing key does not hit) / `co` / `duration_ms gt` per SPEC. Illegal compare literals, oversized or over-deep `filter`, query name `ext.*` → 400. After PATCH `ext: {}`, `eq` and `pr` miss. SDK sends `filter` on the query string. Entry list `filter=type eq "comment"` and link list `filter=title co "所属"` filter on the server. Illegal seed `ext` fails import and does not write `store.json`. Console filter 「首页」 uses provider `title co`; 「首页文案」 visible, 「发布小组」 not. Opening 「首页文案」 shows 「撰写中」.
 13. Cross-provider association and standalone adapter: `parseChannelResourceUrl('https://example.com/spec')` is `null`; `http://127.0.0.1:9/v1/channels/ch_proj` yields origin and `ch_proj`. On notes `ch_draft`, `POST` `type=references` with `target_url` = tasks provider channel resource URL; subsequent `GET` still has `target_url` and no `target_id`. `ftp://x` create link → 400. Console opens 「接口草案」, 「关联」 picks 「首页文案」, 「其它」 shows that title; after refresh it remains; clicking enters the tasks provider channel and shows 「撰写中」. `examples/native` source has no `createApp` or `@open-channel/server`; `GET /v1` capabilities and channel `ext.native_id` round-trip; same discovery + link-shape black box against native and notes. Undeclared revisions on native (including nested id and restore), PATCH body, and share collections must not return `{ data: [] }`; `parent_id` → `threads_unsupported`; list `filter` → 400 not unfiltered 200; `GET /s/{token}` → `share_unavailable`.
 14. **Bilingual UI:** default path stays Chinese (existing assertions). With `?lang=en` (or `Accept-Language: en` on share), shell copy is English and known seed strings (channel titles, provider names, discussion, body, and so on) show via the display map; `seed.json` stays Chinese. `resolveLocale` prefers `?lang=`, then stored locale (browser), then `Accept-Language`, else `zh`. Unavailable aggregate rows use a stable type (e.g. `unavailable`) and empty title; the page renders the localized “Source unavailable” label. English filter “Home” must hit the channel whose Chinese title is 首页文案.
+15. **Example surfaces:** `GET /` on chat/tasks/notes is HTML with the genre shell (`app-chat` / `pm-nav` / `doc-paper`) and seed titles (Release team / Site redesign / API draft in English UI). `createApp` without `surface` still returns problem JSON `not_found` for `GET /`. `GET /v1/channels` without a token stays 401. Chat HTML has no fusion-console `<title>`, no `section-band`, no `demo-token`. Tasks page includes 撰写中 / In progress. Notes page includes the addressable-container sentence. Native `GET /` includes ticket id `T-100` and 验收清单; source still has no `createApp`. Walk page includes `playfield` and Walk room; the walk example sets admission `url` to `wsAddress`. Group share HTML includes `message-bubble`. E2E: local Chrome opens the chat surface, sends a message, and that sentence appears in a bubble.
 
 SDK `resolveShare` sends `Accept: application/json`.
 
@@ -201,6 +212,8 @@ Forbidden thin paths (tests must block as negative cases, or treat as incomplete
 - Standalone adapter imports `@open-channel/server` / `createApp`
 - Standalone adapter returns empty lists for undeclared capabilities, or ignores `filter` and still 200
 - Unavailable rows depend on a hard-coded Chinese title string in the aggregate payload
+- Example surfaces reuse fusion-console section bands, or `GET /` becomes HTML when `surface` is unset
+- Surface HTML embeds `demo-token`
 
 ## Implementation order
 
