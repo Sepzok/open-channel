@@ -44,6 +44,7 @@ function copyRuntime() {
   const dest = path.join(siteDir, 'runtime');
   fs.mkdirSync(dest, { recursive: true });
   for (const name of fs.readdirSync(runtimeSrc)) {
+    if (name.endsWith('.test.mjs') || name.endsWith('.test.js')) continue;
     fs.copyFileSync(path.join(runtimeSrc, name), path.join(dest, name));
   }
 }
@@ -281,6 +282,7 @@ document.getElementById('lang-en').onclick = () => apply('en');
 async function main() {
   rimraf(siteDir);
   fs.mkdirSync(siteDir, { recursive: true });
+  fs.writeFileSync(path.join(siteDir, '.nojekyll'), '');
   copyRuntime();
 
   const locale = resolveLocale({ queryLang: 'zh' });

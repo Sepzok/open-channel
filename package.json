@@ -21,6 +21,7 @@
     "test:e2e": "node e2e/console.mjs && node e2e/surfaces.mjs && node e2e/hub.mjs",
     "test:e2e:pages": "npm run pages:build && node --test e2e/pages.mjs",
     "pages:build": "tsx scripts/pages-build.mjs",
+    "pages:deploy": "tsx scripts/pages-deploy.mjs",
     "dev:chat": "tsx examples/chat/index.ts",
     "dev:tasks": "tsx examples/tasks/index.ts",
     "dev:notes": "tsx examples/notes/index.ts",
