@@ -42,7 +42,9 @@ describe('aggregateChannels', () => {
     assert.ok(titles.includes('接口草案'));
     const tasksRow = result.channels.find((c) => c.providerId === 'tasks' && !c.providerAvailable);
     assert.ok(tasksRow);
-    assert.match(tasksRow!.channel.title, /不可用/);
+    assert.equal(tasksRow!.channel.type, 'unavailable');
+    assert.equal(tasksRow!.channel.title, '');
+    assert.equal(tasksRow!.providerAvailable, false);
   });
 
   it('sends title contains to providers', async () => {

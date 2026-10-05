@@ -1,15 +1,17 @@
 # Agent 约定（Open Channel）
 
+[English](AGENTS.en.md)
+
 ## 协议变更
 
 修改行为或字段时**同时**更新：
 
-- `docs/SPEC.md`（状态码与能力语义）
+- `docs/SPEC.md`（状态码与能力语义）与英译镜像 `docs/en/SPEC.md`
 - `schema/ocp.v1.schema.json` 与 `schema/fixtures/`
 - `@open-channel/sdk`（TypeScript）与 `sdk/python/openchannel`
 - 相关测试（`test/`、`server/test/`、`sdk/**/test*`、`e2e/`）
 
-形状以 schema 为准；HTTP 语义以 SPEC 为准。
+形状以 schema 为准；HTTP 语义以中文 SPEC 为准。
 
 ## 接到别的产品
 
@@ -25,7 +27,7 @@ OCP 只描述 HTTP 上的文档资源。对局状态不进频道正文、讨论�
 
 ## 文案
 
-面向用户的中文界面与文档使用行业用语：频道、讨论、链接、修订、分享。融合台标签以 `docs/PLAN.md` 为准。按钮和分区用两个字及以上的行业词，不要用单个汉字当标签。
+面向用户的界面按当前 locale：中文用行业双字词（频道、讨论、链接、修订、分享），英文用对应行业词（channel、discussion、link、revision、share）。融合台标签以 `docs/PLAN.md` / `docs/en/PLAN.md` 为准。按钮和分区用两个字及以上（或英文多词）的行业词，不要用单个汉字当标签。协议与开源入口文档以中文为规范路径，英文为 `docs/en/` 与 `*.en.md` 镜像。
 
 ## 测试
 

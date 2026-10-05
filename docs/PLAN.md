@@ -1,5 +1,7 @@
 # Open Channel 实现计划
 
+[English](en/PLAN.md)
+
 本文件是实现合同。行为以 `docs/SPEC.md` 为准，形状以 `schema/ocp.v1.schema.json` 为准。两边冲突时：字段形状听 schema，状态码与能力语义听 SPEC。实现不得另起一套资源名。
 
 ## 目标
@@ -117,7 +119,31 @@ Python 用同名 snake_case。查询参数、路径、请求体与 SPEC 相同�
 
 界面是浅色操作台，自定义按钮和输入框，不用浏览器默认外观。分区用通栏标题（正文、讨论、链接、修订、分享），不做成卡片堆。没有的能力不渲染该区。
 
-中文标签：私聊、群组、聊天室、项目、任务、笔记、正文、讨论、链接、上级、下级、其它、修订、分享、发送、创建分享、恢复、关联、来源不可用。
+标签（中 / 英）：
+
+| 中文 | English |
+| --- | --- |
+| 私聊 | Direct message |
+| 群组 | Group |
+| 聊天室 | Room |
+| 项目 | Project |
+| 任务 | Task |
+| 笔记 | Note |
+| 正文 | Body |
+| 讨论 | Discussion |
+| 链接 | Links |
+| 上级 | Parent |
+| 下级 | Children |
+| 其它 | Other |
+| 修订 | Revisions |
+| 分享 | Shares |
+| 发送 | Send |
+| 创建分享 | Create share |
+| 恢复 | Restore |
+| 关联 | Link |
+| 来源不可用 | Source unavailable |
+
+界面按当前 locale（`?lang=`、`Accept-Language`、融合台切换器）。种子频道标题仍是中文样例数据，不翻译。
 
 ## 种子
 
@@ -150,9 +176,11 @@ Python 用同名 snake_case。查询参数、路径、请求体与 SPEC 相同�
 
 13. 跨提供方关联与独立适配：`parseChannelResourceUrl('https://example.com/spec')` 为 `null`；`http://127.0.0.1:9/v1/channels/ch_proj` 解析出 origin 与 `ch_proj`。对笔记 `ch_draft` `POST` `type=references` 且 `target_url` 为任务提供方的频道资源 URL，随后 `GET` 该链接仍是 `target_url`、没有 `target_id`。`ftp://x` 创建链接为 400。融合台打开「接口草案」，点「关联」选「首页文案」，「其它」出现该标题；刷新后再打开仍在；点它进入任务提供方频道且可见「撰写中」。`examples/native` 源码不含 `createApp` 与 `@open-channel/server`；`GET /v1` 的 capabilities 与频道 `ext.native_id` 能读回；对 native 与 notes 都跑同一套发现 + 链接形状黑盒。native 未声明的修订（含嵌套 id 与 restore）、PATCH 正文、分享集合不得返回 `{ data: [] }`；`parent_id` 为 `threads_unsupported`；列表 `filter` 为 400 不是未筛选 200；`GET /s/{token}` 为 `share_unavailable`。
 
+14. **双语界面**：默认路径仍为中文（现有断言不变）。`?lang=en`（或分享页 `Accept-Language: en`）时壳文案为英文（如 Send / Create share）。`resolveLocale` 优先 `?lang=`，再存档 locale（浏览器），再 `Accept-Language`，默认 `zh`。不可用聚合行使用稳定类型（如 `unavailable`）与空标题，由页面按 locale 渲染「来源不可用 / Source unavailable」——聚合载荷不得写死中文标题。
+
 SDK 的 `resolveShare` 发送 `Accept: application/json`。
 
-`AGENTS.md` 写明：改协议必须同时改 SPEC、schema、两份 SDK 和测试；源码以 MIT 公开、不发 npm、不部署公网服务；界面中文用行业用语。
+`AGENTS.md` / `AGENTS.en.md` 写明：改协议必须同时改 SPEC（中英）、schema、两份 SDK 和测试；源码以 MIT 公开、不发 npm、不部署公网服务；界面按当前 locale 用行业用语。
 
 融合台写讨论的输入框放在讨论区内随页面滚动，不 `position: fixed` 贴在视口底边。
 
@@ -171,6 +199,7 @@ SDK 的 `resolveShare` 发送 `Accept: application/json`。
 - 把对方频道 id 当作本提供方 `target_id`
 - 独立适配例子引用 `@open-channel/server` / `createApp`
 - 独立适配对未声明能力返回空列表，或忽略 `filter` 仍 200
+- 不可用行依赖聚合载荷里写死的中文标题
 
 ## 实现顺序
 

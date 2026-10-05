@@ -1,5 +1,6 @@
 import type { Block, Channel, Entry, Share } from './types.js';
 import { blockTextContent, escapeHtml } from './util.js';
+import { messagesFor, type Locale } from './uiLocale.js';
 
 function renderBlocks(blocks: Block[], shareToken: string, publicOrigin: string): string {
   return blocks
@@ -24,8 +25,10 @@ export function sharePageHtml(opts: {
   entries: Entry[];
   share: Share;
   publicOrigin: string;
+  locale?: Locale;
 }): string {
   const { channel, entries, share, publicOrigin } = opts;
+  const t = messagesFor(opts.locale ?? 'zh');
   const bodyHtml = renderBlocks(channel.body, share.token, publicOrigin);
   const extHtml =
     channel.ext && Object.keys(channel.ext).length
@@ -45,8 +48,8 @@ export function sharePageHtml(opts: {
   const form =
     share.scope === 'comment'
       ? `<div class="comment-form">
-  <textarea id="share-text" rows="3" placeholder="写下补充"></textarea>
-  <button type="button" id="share-send">发送</button>
+  <textarea id="share-text" rows="3" placeholder="${escapeHtml(t.sharePlaceholder)}"></textarea>
+  <button type="button" id="share-send">${escapeHtml(t.shareSend)}</button>
 </div>
 <script>
 document.getElementById('share-send').addEventListener('click', async () => {
@@ -63,7 +66,7 @@ document.getElementById('share-send').addEventListener('click', async () => {
       : '';
 
   return `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="${escapeHtml(t.htmlLang)}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">

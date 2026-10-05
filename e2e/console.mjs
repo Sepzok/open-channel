@@ -81,7 +81,7 @@ async function main() {
   const browser = await chromium.launch({ channel: 'chrome' });
   const page = await browser.newPage();
   try {
-    await page.goto(base);
+    await page.goto(`${base}?lang=zh`);
     await page.getByRole('button', { name: '发布小组' }).waitFor();
     await page.getByLabel('筛选频道').fill('首页');
     await page.getByLabel('筛选频道').press('Enter');
@@ -110,6 +110,14 @@ async function main() {
     await page.locator('#detail').getByRole('button', { name: '首页文案' }).waitFor();
     await page.locator('#detail').getByRole('button', { name: '首页文案' }).click();
     await page.getByText('撰写中').waitFor();
+
+    await page.goto(`${base}?lang=en`);
+    await page.getByRole('button', { name: '发布小组' }).waitFor();
+    await page.getByRole('button', { name: '接口草案' }).click();
+    await page.getByRole('button', { name: 'Send' }).waitFor();
+    await page.getByRole('button', { name: 'Create share' }).waitFor();
+    await page.getByLabel('Filter channels').waitFor();
+
     console.log('e2e: ok');
   } finally {
     await browser.close();

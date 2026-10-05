@@ -1,15 +1,22 @@
-export function renderPage(): string {
+import { UI_MESSAGES, type Locale } from '../../../server/src/uiLocale.js';
+
+export function renderPage(locale: Locale = 'zh'): string {
+  const messagesJson = JSON.stringify(UI_MESSAGES).replace(/</g, '\\u003c');
+  const initial = JSON.stringify(locale);
   return `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="${locale === 'en' ? 'en' : 'zh-CN'}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>融合台</title>
+<title></title>
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; font-family: system-ui, sans-serif; background: #f4f5f7; color: #1a1a1a; }
-  header { background: #fff; border-bottom: 1px solid #e2e5ea; padding: 12px 16px; }
+  header { background: #fff; border-bottom: 1px solid #e2e5ea; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   header h1 { margin: 0; font-size: 1.125rem; }
+  .lang-switch { display: flex; gap: 4px; }
+  .lang-switch button { appearance: none; font: inherit; border-radius: 6px; padding: 6px 10px; border: 1px solid #c5cad3; background: #fff; color: #1a1a1a; cursor: pointer; }
+  .lang-switch button.active { border-color: #1d4e89; background: #1d4e89; color: #fff; }
   .layout { display: grid; grid-template-columns: 280px 1fr; min-height: calc(100vh - 49px); }
   aside { background: #fff; border-right: 1px solid #e2e5ea; overflow: auto; display: flex; flex-direction: column; }
   .list-filter { padding: 8px 12px; border-bottom: 1px solid #e2e5ea; flex-shrink: 0; }
@@ -40,19 +47,66 @@ export function renderPage(): string {
 </style>
 </head>
 <body>
-<header><h1>融合台</h1></header>
+<header>
+  <h1 id="app-title"></h1>
+  <div class="lang-switch" role="group" aria-label="Language">
+    <button type="button" id="lang-zh" data-lang="zh"></button>
+    <button type="button" id="lang-en" data-lang="en"></button>
+  </div>
+</header>
 <div class="layout">
   <aside>
-    <div class="list-filter"><input id="channel-filter" type="search" placeholder="筛选频道" aria-label="筛选频道"></div>
-    <div id="channel-list"><div class="empty">加载中…</div></div>
+    <div class="list-filter"><input id="channel-filter" type="search" placeholder="" aria-label=""></div>
+    <div id="channel-list"><div class="empty" id="list-empty"></div></div>
   </aside>
-  <main id="detail"><div class="empty">选择左侧频道</div></main>
+  <main id="detail"><div class="empty" id="detail-empty"></div></main>
 </div>
 <script>
-const TYPE_LABELS = { dm: '私聊', group: '群组', room: '聊天室', project: '项目', task: '任务', note: '笔记' };
+const MESSAGES = ${messagesJson};
+const STORAGE_KEY = 'ocp-console-lang';
+let locale = ${initial};
+try {
+  const params = new URLSearchParams(location.search);
+  const q = params.get('lang');
+  if (q === 'zh' || q === 'en') locale = q;
+  else {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored === 'zh' || stored === 'en') locale = stored;
+  }
+} catch (_) {}
+let t = MESSAGES[locale];
 let channels = [];
 let selected = null;
 let detail = null;
+
+function applyChrome() {
+  t = MESSAGES[locale];
+  document.documentElement.lang = t.htmlLang;
+  document.title = t.consoleTitle;
+  document.getElementById('app-title').textContent = t.consoleTitle;
+  const filter = document.getElementById('channel-filter');
+  filter.placeholder = t.filterPlaceholder;
+  filter.setAttribute('aria-label', t.filterAria);
+  document.getElementById('lang-zh').textContent = t.langZh;
+  document.getElementById('lang-en').textContent = t.langEn;
+  document.getElementById('lang-zh').classList.toggle('active', locale === 'zh');
+  document.getElementById('lang-en').classList.toggle('active', locale === 'en');
+  if (!selected) {
+    document.getElementById('detail').innerHTML = '<div class="empty">' + escapeHtml(t.selectChannel) + '</div>';
+  }
+}
+
+function setLocale(next) {
+  if (next !== 'zh' && next !== 'en') return;
+  locale = next;
+  try { localStorage.setItem(STORAGE_KEY, locale); } catch (_) {}
+  const u = new URL(location.href);
+  u.searchParams.set('lang', locale);
+  history.replaceState(null, '', u);
+  applyChrome();
+  renderList();
+  if (selected) renderDetail();
+}
 
 async function loadChannels() {
   const q = (document.getElementById('channel-filter')?.value || '').trim();
@@ -65,14 +119,15 @@ async function loadChannels() {
 function renderList() {
   const el = document.getElementById('channel-list');
   if (!channels.length) {
-    el.innerHTML = '<div class="empty">暂无频道</div>';
+    el.innerHTML = '<div class="empty">' + escapeHtml(t.noChannels) + '</div>';
     return;
   }
   el.innerHTML = channels.map((row) => {
-    if (!row.providerAvailable) {
-      return '<div class="channel-item unavailable"><div>' + row.providerName + '</div><div class="channel-meta">来源不可用</div></div>';
+    if (!row.providerAvailable || row.channel.type === 'unavailable') {
+      return '<div class="channel-item unavailable"><div>' + escapeHtml(row.providerName) + '</div><div class="channel-meta">' +
+        escapeHtml(t.sourceUnavailable) + '</div></div>';
     }
-    const label = TYPE_LABELS[row.channel.type] || row.channel.type;
+    const label = t.typeLabels[row.channel.type] || row.channel.type;
     const active = selected && selected.providerId === row.providerId && selected.channelId === row.channel.id ? ' active' : '';
     return '<button type="button" class="channel-item' + active + '" data-provider="' + row.providerId + '" data-id="' + row.channel.id + '">' +
       '<div>' + escapeHtml(row.channel.title) + '</div>' +
@@ -107,7 +162,7 @@ function blockText(blocks) {
 function renderDetail() {
   const el = document.getElementById('detail');
   if (!detail || !detail.channel) {
-    el.innerHTML = '<div class="empty">读取失败</div>';
+    el.innerHTML = '<div class="empty">' + escapeHtml(t.readFailed) + '</div>';
     return;
   }
   const ch = detail.channel;
@@ -115,22 +170,23 @@ function renderDetail() {
   let html = '';
   const ext = ch.ext && typeof ch.ext === 'object' ? ch.ext : null;
   if (ext && Object.keys(ext).length) {
-    html += '<div class="section-band">资料</div><div class="section-body">';
+    html += '<div class="section-band">' + escapeHtml(t.meta) + '</div><div class="section-body">';
     Object.keys(ext).forEach((k) => {
       html += '<div class="link-row">' + escapeHtml(k) + '：' + escapeHtml(String(ext[k])) + '</div>';
     });
     html += '</div>';
   }
   if (caps.body) {
-    html += '<div class="section-band">正文</div>';
+    html += '<div class="section-band">' + escapeHtml(t.body) + '</div>';
     html += '<div class="section-body body-text">' + escapeHtml(blockText(ch.body)) + '</div>';
   }
   if (caps.entries) {
-    html += '<div class="section-band">讨论</div><div class="section-body" id="entries">';
+    html += '<div class="section-band">' + escapeHtml(t.entries) + '</div><div class="section-body" id="entries">';
     (detail.entries?.data || detail.entries || []).forEach((e) => {
       html += '<div class="entry"><div class="entry-author">' + escapeHtml(e.author.display_name) + '</div><div>' + escapeHtml(blockText(e.body)) + '</div></div>';
     });
-    html += '<div class="entry-compose"><textarea id="entry-text" placeholder="写下讨论"></textarea><button type="button" id="send-entry">发送</button></div></div>';
+    html += '<div class="entry-compose"><textarea id="entry-text" placeholder="' + escapeHtml(t.writeEntry) + '"></textarea><button type="button" id="send-entry">' +
+      escapeHtml(t.send) + '</button></div></div>';
   }
   if (caps.links) {
     const out = detail.links?.data || detail.links || [];
@@ -138,8 +194,8 @@ function renderDetail() {
     const parents = out.filter((l) => l.type === 'parent');
     const others = out.filter((l) => l.type !== 'parent');
     const hasAny = parents.length || children.length || others.length;
-    html += '<div class="section-band">链接</div><div class="section-body">';
-    if (!hasAny) html += '<div class="empty">暂无链接</div>';
+    html += '<div class="section-band">' + escapeHtml(t.links) + '</div><div class="section-body">';
+    if (!hasAny) html += '<div class="empty">' + escapeHtml(t.noLinks) + '</div>';
     function linkRow(l, fallback) {
       const text = escapeHtml(fallback(l));
       if (l.resolved && l.resolved.providerId && l.resolved.channelId) {
@@ -152,27 +208,29 @@ function renderDetail() {
       return '<div class="link-row">' + text + '</div>';
     }
     if (parents.length) {
-      html += '<div class="link-group">上级</div>' + parents.map((l) => linkRow(l, (x) => x.title || x.target_id || x.type)).join('');
+      html += '<div class="link-group">' + escapeHtml(t.parents) + '</div>' + parents.map((l) => linkRow(l, (x) => x.title || x.target_id || x.type)).join('');
     }
     if (children.length) {
-      html += '<div class="link-group">下级</div>' + children.map((l) => linkRow(l, (x) => x.label || x.title || x.source_id)).join('');
+      html += '<div class="link-group">' + escapeHtml(t.children) + '</div>' + children.map((l) => linkRow(l, (x) => x.label || x.title || x.source_id)).join('');
     }
     if (others.length) {
-      html += '<div class="link-group">其它</div>' + others.map((l) => linkRow(l, (x) => x.title || x.type)).join('');
+      html += '<div class="link-group">' + escapeHtml(t.others) + '</div>' + others.map((l) => linkRow(l, (x) => x.title || x.type)).join('');
     }
-    html += '<button type="button" class="secondary" id="associate-open">关联</button>';
+    html += '<button type="button" class="secondary" id="associate-open">' + escapeHtml(t.associate) + '</button>';
     html += '<div id="associate-panel" hidden></div>';
     html += '</div>';
   }
   if (caps.revisions && detail.revisions) {
-    html += '<div class="section-band">修订</div><div class="section-body" id="revisions">';
+    html += '<div class="section-band">' + escapeHtml(t.revisions) + '</div><div class="section-body" id="revisions">';
     (detail.revisions.data || []).forEach((r) => {
-      html += '<div class="rev-row"><span>' + escapeHtml(r.id) + '</span><button type="button" class="secondary restore-rev" data-rev="' + r.id + '">恢复</button></div>';
+      html += '<div class="rev-row"><span>' + escapeHtml(r.id) + '</span><button type="button" class="secondary restore-rev" data-rev="' + r.id + '">' +
+        escapeHtml(t.restore) + '</button></div>';
     });
     html += '</div>';
   }
   if (caps.shares) {
-    html += '<div class="section-band">分享</div><div class="section-body"><button type="button" id="create-share">创建分享</button><div class="share-url" id="share-url"></div></div>';
+    html += '<div class="section-band">' + escapeHtml(t.shares) + '</div><div class="section-body"><button type="button" id="create-share">' +
+      escapeHtml(t.createShare) + '</button><div class="share-url" id="share-url"></div></div>';
   }
   el.innerHTML = html;
   document.getElementById('send-entry')?.addEventListener('click', sendEntry);
@@ -213,12 +271,12 @@ function openAssociate() {
   const choices = channels.filter((row) => row.providerAvailable && !(row.providerId === selected.providerId && row.channel.id === selected.channelId));
   if (!choices.length) {
     panel.hidden = false;
-    panel.innerHTML = '<div class="empty">没有可关联的频道</div>';
+    panel.innerHTML = '<div class="empty">' + escapeHtml(t.noAssociate) + '</div>';
     return;
   }
   panel.hidden = false;
   panel.innerHTML = choices.map((row) => {
-    const label = TYPE_LABELS[row.channel.type] || row.channel.type;
+    const label = t.typeLabels[row.channel.type] || row.channel.type;
     return '<button type="button" class="channel-item" data-provider="' + row.providerId + '" data-id="' + row.channel.id + '" data-title="' + encodeURIComponent(row.channel.title) + '">' +
       '<div>' + escapeHtml(row.channel.title) + '</div>' +
       '<div class="channel-meta">' + escapeHtml(row.providerName) + ' · ' + label + '</div></button>';
@@ -241,6 +299,9 @@ async function restoreRev(revId) {
   await openChannel(selected.providerId, selected.channelId);
 }
 
+document.getElementById('lang-zh').addEventListener('click', () => setLocale('zh'));
+document.getElementById('lang-en').addEventListener('click', () => setLocale('en'));
+applyChrome();
 loadChannels();
 document.getElementById('channel-filter').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') loadChannels();

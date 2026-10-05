@@ -4,7 +4,7 @@ import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { aggregateChannels, annotateLink, associateLinkBody, entryTypeForChannel, type ProviderConfig } from './src/aggregate.js';
 import { renderPage } from './src/page.js';
-import { bindHost, originAfterListen } from '@open-channel/server';
+import { bindHost, originAfterListen, resolveLocale } from '@open-channel/server';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT ?? 8780);
@@ -54,8 +54,14 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', `http://127.0.0.1:${port}`);
   try {
     if (req.method === 'GET' && url.pathname === '/') {
+      const locale = resolveLocale({
+        queryLang: url.searchParams.get('lang'),
+        acceptLanguage: Array.isArray(req.headers['accept-language'])
+          ? req.headers['accept-language'][0]
+          : req.headers['accept-language'],
+      });
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(renderPage());
+      res.end(renderPage(locale));
       return;
     }
 

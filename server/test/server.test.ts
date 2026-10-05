@@ -248,6 +248,31 @@ describe('share mechanisms', () => {
     assert.doesNotMatch(page, /method="post"/);
   });
 
+  it('share html English via query and Accept-Language', async () => {
+    const share = await httpJson(baseUrl, 'POST', '/v1/channels/ch_draft/shares', {
+      body: { scope: 'comment', expires_at: null },
+    });
+    const t = (share.body as { token: string }).token;
+    const byQuery = await fetch(`${baseUrl}/s/${t}?lang=en`, { headers: { Accept: 'text/html' } });
+    const byQueryBody = await byQuery.text();
+    assert.match(byQueryBody, /lang="en"/);
+    assert.match(byQueryBody, />Send</);
+    assert.match(byQueryBody, /Add a comment/);
+    assert.doesNotMatch(byQueryBody, />发送</);
+
+    const byHeader = await fetch(`${baseUrl}/s/${t}`, {
+      headers: { Accept: 'text/html', 'Accept-Language': 'en-US,en;q=0.9' },
+    });
+    const byHeaderBody = await byHeader.text();
+    assert.match(byHeaderBody, /lang="en"/);
+    assert.match(byHeaderBody, />Send</);
+
+    const zhDefault = await fetch(`${baseUrl}/s/${t}`, { headers: { Accept: 'text/html' } });
+    const zhBody = await zhDefault.text();
+    assert.match(zhBody, /lang="zh-CN"/);
+    assert.match(zhBody, />发送</);
+  });
+
   it('share file stays inside the channel', async () => {
     const gloss = await httpJson(baseUrl, 'POST', '/v1/channels/ch_glossary/shares', {
       body: { scope: 'view', expires_at: null },

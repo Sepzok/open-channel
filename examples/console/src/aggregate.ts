@@ -57,7 +57,7 @@ export async function aggregateChannels(
         providerId: p.id,
         providerName: p.name,
         providerAvailable: false,
-        channel: { id: '_unavailable', type: 'unavailable', title: '来源不可用', updated_at: '' },
+        channel: { id: '_unavailable', type: 'unavailable', title: '', updated_at: '' },
       });
       continue;
     }

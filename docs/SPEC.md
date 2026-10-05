@@ -1,5 +1,7 @@
 # Open Channel Protocol 1
 
+[English](en/SPEC.md)
+
 媒体类型 `application/vnd.ocp+json`。错误用 `application/problem+json`。时间是 UTC 的 ISO-8601，含 `Z`。请求体出现 schema 未定义的字段时，返回 400 `validation_error`，不忽略。`title`、`body`、`members` 在 PATCH 里出现时整体替换，不按块、不按成员合并。
 
 本协议描述**一个提供方**上的资源。汇合多个提供方是客户端的工作，不在协议内。

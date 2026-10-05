@@ -1,5 +1,7 @@
 # 大厅与对局
 
+[English](en/LIVE.md)
+
 本文件是切法合同，不是 OCP 的第二套资源。形状仍以 `schema/ocp.v1.schema.json` 为准，HTTP 语义仍以 `docs/SPEC.md` 为准。对局帧写在 `docs/MATCH.md`，不进入 schema。
 
 ## 结论

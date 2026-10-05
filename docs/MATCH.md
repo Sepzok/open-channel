@@ -1,5 +1,7 @@
 # 对局进程
 
+[English](en/MATCH.md)
+
 OCP 只签发短时入场。权威步进在独立包 `@open-channel/match`，内存状态，不写 `store.json`。进程不认识任何一种游戏。
 
 第三方要做自己的游戏：实现 `reduce` / `encode`，客户端按本文件组帧，入场只调 `createAdmission`。不要从 `examples/walk` 抄玩法。走动例子只证明接缝。

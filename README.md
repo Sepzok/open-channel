@@ -1,5 +1,7 @@
 # Open Channel Protocol（本地参考实现）
 
+[English](README.en.md)
+
 Open Channel Protocol（OCP）用统一的资源模型描述**单个提供方**上的频道、讨论、链接、分享与修订。跨提供方的汇合由客户端完成（本仓库的融合台即一例）。
 
 本仓库为本地可运行的协议参考实现与示例，以 MIT 许可证公开源码。不执行 `npm publish`，不向 PyPI 上传，不部署公网服务。
@@ -45,7 +47,7 @@ npm run test:e2e
 
 能力（`body`、`entries`、`entry_threads`、`links`、`shares`、`revisions`、`live`）写在发现文档与频道上；不支持的路由返回 `capability_unsupported`，不用空列表冒充。
 
-协议细节见 `docs/SPEC.md`，JSON Schema 见 `schema/ocp.v1.schema.json`。游戏房间可映射为频道；对局同步见 `docs/LIVE.md` 与 `docs/MATCH.md`。
+协议细节见 `docs/SPEC.md`（[English](docs/en/SPEC.md)），JSON Schema 见 `schema/ocp.v1.schema.json`。游戏房间可映射为频道；对局同步见 `docs/LIVE.md` 与 `docs/MATCH.md`。
 
 ## 包结构
 
@@ -60,4 +62,6 @@ npm run test:e2e
 
 把已有产品暴露为 OCP、以及客户端如何对接多个服务端，见 `docs/ADAPT.md`。修订、分享页、列表 `filter` 的实现入口也在该文档：native 示范「产品没有这些能力」；有这些能力时看笔记例子与可拷模块，不要从 native 开这三项。
 
-许可证见 `LICENSE`（MIT）。贡献见 `CONTRIBUTING.md`。改这个仓库的 Agent 约定见 `AGENTS.md`。
+许可证见 `LICENSE`（MIT）。贡献见 `CONTRIBUTING.md` / `CONTRIBUTING.en.md`。Agent 约定见 `AGENTS.md` / `AGENTS.en.md`。
+
+界面语言：融合台与分享 HTML 支持中/英（`?lang=`、`Accept-Language`、融合台切换器）。种子频道标题仍为中文样例数据。

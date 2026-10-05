@@ -1,17 +1,19 @@
 # 贡献
 
-源码以 MIT 许可证公开。改代码前先读 `docs/SPEC.md` 与 `docs/ADAPT.md`。
+[English](CONTRIBUTING.en.md)
+
+源码以 MIT 许可证公开。改代码前先读 `docs/SPEC.md`（英译见 `docs/en/SPEC.md`）与 `docs/ADAPT.md`。
 
 ## 协议
 
 修改行为或字段时同时更新：
 
-- `docs/SPEC.md`
+- `docs/SPEC.md` 与英译镜像 `docs/en/SPEC.md`
 - `schema/ocp.v1.schema.json` 与 `schema/fixtures/`
 - TypeScript SDK 与 Python SDK
 - 相关测试
 
-形状以 schema 为准；HTTP 语义以 SPEC 为准。
+形状以 schema 为准；HTTP 语义以中文 SPEC 为准。
 
 ## 测试
 

@@ -28,6 +28,7 @@ import {
 import { signAdmission } from '@open-channel/match';
 import { sharePageHtml } from './html.js';
 import { parseListFilterQuery } from './scimFilter.js';
+import { resolveLocale } from './uiLocale.js';
 import type { FileMeta } from './types.js';
 import {
   canCreateAccount,
@@ -400,11 +401,18 @@ export function createApp(options: AppOptions): http.Server {
             });
           } else {
             const entries = Object.values(store.data.entries).filter((e) => e.channel_id === ch.id);
+            const locale = resolveLocale({
+              queryLang: url.searchParams.get('lang'),
+              acceptLanguage: Array.isArray(req.headers['accept-language'])
+                ? req.headers['accept-language'][0]
+                : req.headers['accept-language'],
+            });
             const html = sharePageHtml({
               channel: ch,
               entries,
               share,
               publicOrigin: options.publicOrigin,
+              locale,
             });
             res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
             res.end(html);
@@ -1397,3 +1405,10 @@ export function createApp(options: AppOptions): http.Server {
 export type { AppOptions, Capabilities, Seed } from './types.js';
 export { bindHost, firstLanIPv4, originAfterListen } from './listen.js';
 export { parseByteRange } from './util.js';
+export {
+  resolveLocale,
+  messagesFor,
+  UI_MESSAGES,
+  type Locale,
+  type UiMessages,
+} from './uiLocale.js';
