@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open Channel</title>
+<meta name="description" content="OCP 浏览器内静态演示。状态留在本机浏览器，不是公网 API。">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; color: #15202b;
+    font-family: system-ui, sans-serif;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, #d9e7f5 0%, transparent 55%),
+      radial-gradient(900px 500px at 100% 0%, #e7f0e8 0%, transparent 50%),
+      #f3f6f8;
+  }
+  header, main { max-width: 42rem; margin: 0 auto; padding: 0 1.5rem; }
+  header { display: flex; justify-content: space-between; align-items: flex-start; padding-top: 2.5rem; }
+  .brand { font-family: "Iowan Old Style", Palatino, "Songti SC", serif; font-size: clamp(1.75rem, 5vw, 2.4rem); font-weight: 700; letter-spacing: -0.03em; }
+  .lang-switch { display: flex; gap: 6px; }
+  .lang-switch button {
+    appearance: none; font: inherit; font-size: 0.875rem; border-radius: 8px; padding: 6px 12px;
+    border: 1px solid #b8c2ce; background: rgba(255,255,255,0.85); cursor: pointer;
+  }
+  .lang-switch button.active { border-color: #1d4e89; background: #1d4e89; color: #fff; }
+  h1 { font-size: 1.15rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
+  .lead { color: #3f4a57; line-height: 1.55; margin: 0 0 1.25rem; }
+  .card {
+    display: block; text-decoration: none; color: inherit; background: #fff;
+    border: 1px solid #d5dee8; border-radius: 12px; padding: 1rem 1.1rem; margin: 0.65rem 0;
+  }
+  .card:hover { border-color: #1d4e89; }
+  .card strong { display: block; margin-bottom: 0.25rem; }
+  .blurb { color: #5c6370; font-size: 0.9rem; }
+  .note { margin: 2rem 0 3rem; font-size: 0.9rem; color: #5c6370; }
+  .note a { color: #1d4e89; }
+  pre {
+    font-family: ui-monospace, Menlo, monospace; font-size: 0.85rem; background: #fff;
+    border: 1px solid #d5dee8; border-radius: 10px; padding: 12px 14px; overflow: auto;
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Open Channel</div>
+  <div class="lang-switch" role="group">
+    <button type="button" id="lang-zh" class="active">中文</button>
+    <button type="button" id="lang-en">English</button>
+  </div>
+</header>
+<main>
+  <h1 id="headline">浏览器内演示</h1>
+  <p class="lead" id="lead">点开各品类例子即可体验。状态只在本机浏览器；完整协议与对局请本机运行仓库。</p>
+<a class="card" href="chat/index.html">
+  <strong data-zh="示例会话" data-en="Sample chat">示例会话</strong>
+  <span class="blurb" data-zh="列表与气泡，可登录发消息" data-en="List and bubbles — sign in and send">列表与气泡，可登录发消息</span>
+</a>
+<a class="card" href="tasks/index.html">
+  <strong data-zh="示例任务" data-en="Sample tasks">示例任务</strong>
+  <span class="blurb" data-zh="项目与任务评论" data-en="Projects and task comments">项目与任务评论</span>
+</a>
+<a class="card" href="notes/index.html">
+  <strong data-zh="示例笔记" data-en="Sample notes">示例笔记</strong>
+  <span class="blurb" data-zh="文稿与批注" data-en="Document and annotations">文稿与批注</span>
+</a>
+<a class="card" href="ticket/index.html">
+  <strong data-zh="工单适配" data-en="Ticket adapter">工单适配</strong>
+  <span class="blurb" data-zh="独立适配展示" data-en="Standalone adapter showcase">独立适配展示</span>
+</a>
+<a class="card" href="walk/index.html">
+  <strong data-zh="走动房间" data-en="Walk room">走动房间</strong>
+  <span class="blurb" data-zh="页内对局，方向键走动" data-en="In-page match — arrow keys to walk">页内对局，方向键走动</span>
+</a>
+<a class="card" href="console/index.html">
+  <strong data-zh="融合台" data-en="Fusion console">融合台</strong>
+  <span class="blurb" data-zh="三源频道一览" data-en="Three providers in one view">三源频道一览</span>
+</a>
+  <p class="note" id="note">源码与协议：<a href="https://github.com/Sepzok/open-channel">GitHub</a></p>
+  <pre id="cmd">git clone https://github.com/Sepzok/open-channel.git
+cd open-channel
+npm install
+npm run dev</pre>
+</main>
+<script>
+const COPY = {
+  zh: {
+    headline: '浏览器内演示',
+    lead: '点开各品类例子即可体验。状态只在本机浏览器；完整协议与对局请本机运行仓库。',
+    note: '源码与协议：'
+  },
+  en: {
+    headline: 'In-browser demos',
+    lead: 'Open each genre example to try it. State stays in your browser; run the repo locally for the full protocol and match.',
+    note: 'Source and specification: '
+  }
+};
+function apply(locale) {
+  const t = COPY[locale];
+  document.documentElement.lang = locale === 'en' ? 'en' : 'zh-CN';
+  document.getElementById('headline').textContent = t.headline;
+  document.getElementById('lead').textContent = t.lead;
+  document.querySelectorAll('[data-zh]').forEach((el) => {
+    el.textContent = locale === 'en' ? el.getAttribute('data-en') : el.getAttribute('data-zh');
+  });
+  const note = document.getElementById('note');
+  note.childNodes[0].textContent = t.note;
+  document.getElementById('lang-zh').classList.toggle('active', locale === 'zh');
+  document.getElementById('lang-en').classList.toggle('active', locale === 'en');
+}
+document.getElementById('lang-zh').onclick = () => apply('zh');
+document.getElementById('lang-en').onclick = () => apply('en');
+</script>
+</body>
+</html>

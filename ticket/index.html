@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>工单适配</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, sans-serif; background: #f3f4f6; color: #1a1a1a; }
+  header { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: #fff; border-bottom: 1px solid #e5e7eb; }
+  .brand { font-weight: 700; }
+  button { appearance: none; font: inherit; border-radius: 8px; cursor: pointer; padding: 6px 10px; border: 1px solid #c5cad3; background: #fff; }
+  button.active { background: #1d4e89; color: #fff; border-color: #1d4e89; }
+  .ticket { max-width: 720px; margin: 32px auto; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 28px 32px 40px; }
+  .key { font-size: 0.8rem; color: #6b7280; }
+  .native-id { font-family: ui-monospace, monospace; font-size: 0.95rem; color: #1d4e89; }
+  h1 { margin: 8px 0 20px; }
+  .comment { border-top: 1px solid #eef1f4; padding: 10px 0; }
+  .author { font-size: 0.8rem; color: #6b7280; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">工单适配</div>
+  <div>
+    <button type="button" class="active" onclick="location.search='?lang=zh'">中文</button>
+    <button type="button" class="" onclick="location.search='?lang=en'">English</button>
+  </div>
+</header>
+<main class="ticket">
+  <div class="key">工单号</div>
+  <div class="native-id">T-100</div>
+  <h1>验收清单</h1>
+  <h2>评论</h2>
+  <article class="comment"><div class="author">融合台</div><div>先对协议再写适配。</div></article>
+</main>
+</body>
+</html>

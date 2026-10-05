@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>对局房间</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, sans-serif; background: #e8eef4; color: #1a1a1a; }
+  header { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: #fff; }
+  .brand { font-weight: 700; }
+  .lang-switch button, button { appearance: none; font: inherit; border-radius: 8px; cursor: pointer; }
+  .lang-switch button { padding: 6px 10px; border: 1px solid #c5cad3; background: #fff; }
+  .lang-switch button.active { background: #1d4e89; color: #fff; border-color: #1d4e89; }
+  .stage-wrap { max-width: 720px; margin: 24px auto; padding: 0 16px 48px; }
+  h1 { margin: 0 0 8px; }
+  .hint { color: #5c6370; margin: 0 0 16px; }
+  .playfield { position: relative; width: 100%; aspect-ratio: 1; background: #f7fafc; border: 1px solid #d5deea; border-radius: 12px; overflow: hidden; }
+  .cell-grid { position: absolute; inset: 0; background-image: linear-gradient(#e2e8f0 1px, transparent 1px), linear-gradient(90deg, #e2e8f0 1px, transparent 1px); background-size: 5% 5%; }
+  .actor { position: absolute; width: 36px; height: 36px; margin: -18px 0 0 -18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; color: #fff; }
+  .actor.lin { background: #1d4e89; }
+  .actor.zhou { background: #c2410c; }
+  #walk-start { margin-top: 16px; padding: 10px 18px; border: 1px solid #1d4e89; background: #1d4e89; color: #fff; }
+  .log { margin-top: 16px; font-size: 0.9rem; color: #3f4a57; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">对局房间</div>
+  <div class="lang-switch">
+    <button type="button" id="lang-zh" data-lang="zh">中文</button>
+    <button type="button" id="lang-en" data-lang="en">English</button>
+  </div>
+</header>
+<div class="stage-wrap">
+  <h1>走动房间</h1>
+  <p class="hint">方向键移动林可，W A S D 移动周宁</p>
+  <div class="playfield" id="playfield">
+    <div class="cell-grid"></div>
+    <div class="actor lin" id="actor-lin" hidden title="林可">林可</div>
+    <div class="actor zhou" id="actor-zhou" hidden title="周宁">周宁</div>
+  </div>
+  <button type="button" id="walk-start">开始走动</button>
+  <div class="log" id="walk-log"></div>
+</div>
+<script src="../runtime/ocp-demo.js"></script>
+<script src="../runtime/walk-demo.js"></script>
+<script type="module">
+const MAGIC = new Uint8Array([0x4f, 0x43, 0x4d, 0x31]); // OCM1
+
+const KIND = { join: 0, input: 1, event: 2, snapshot: 3 };
+const KIND_NAME = ['join', 'input', 'event', 'snapshot'];
+
+/**
+ * @param {object} frame
+ * @param {string} frame.kind
+ * @param {number} frame.seq
+ * @param {string} frame.channelId
+ * @param {string} frame.actorId
+ * @param {Uint8Array} frame.payload
+ * @returns {Uint8Array}
+ */
+export function encodeOcm1(frame) {
+  const ch = new TextEncoder().encode(frame.channelId);
+  const actor = new TextEncoder().encode(frame.actorId);
+  const header = new Uint8Array(11);
+  header.set(MAGIC, 0);
+  header[4] = KIND[frame.kind];
+  const seq = frame.seq >>> 0;
+  header[5] = seq & 0xff;
+  header[6] = (seq >>> 8) & 0xff;
+  header[7] = (seq >>> 16) & 0xff;
+  header[8] = (seq >>> 24) & 0xff;
+  header[9] = ch.length;
+  header[10] = actor.length;
+  const out = new Uint8Array(11 + ch.length + actor.length + frame.payload.length);
+  out.set(header, 0);
+  out.set(ch, 11);
+  out.set(actor, 11 + ch.length);
+  out.set(frame.payload, 11 + ch.length + actor.length);
+  return out;
+}
+
+/**
+ * @param {Uint8Array} buf
+ */
+export function decodeOcm1(buf) {
+  if (buf.length < 11) return null;
+  for (let i = 0; i < 4; i++) if (buf[i] !== MAGIC[i]) return null;
+  const kind = KIND_NAME[buf[4]];
+  if (!kind) return null;
+  const seq = buf[5] | (buf[6] << 8) | (buf[7] << 16) | (buf[8] << 24);
+  const chLen = buf[9];
+  const actorLen = buf[10];
+  if (buf.length < 11 + chLen + actorLen) return null;
+  const dec = new TextDecoder();
+  const channelId = dec.decode(buf.subarray(11, 11 + chLen));
+  const actorId = dec.decode(buf.subarray(11 + chLen, 11 + chLen + actorLen));
+  const payload = buf.subarray(11 + chLen + actorLen);
+  return { kind, seq: seq >>> 0, channelId, actorId, payload };
+}
+
+const locale = "zh";
+const SNAPSHOT = {"provider":{"id":"walk","name":"对局房间"},"kind":"custom","accounts":[{"id":"u_fuse","display_name":"融合台"},{"id":"u_lin","display_name":"林可"},{"id":"u_zhou","display_name":"周宁"}],"channels":[{"id":"ch_walk","type":"room","title":"走动房间","body":[],"members":[{"id":"u_lin","display_name":"林可"},{"id":"u_zhou","display_name":"周宁"}]}],"entries":[],"links":[],"revisions":[],"files":[]};
+window.SNAPSHOT = SNAPSHOT;
+document.getElementById('lang-zh').classList.toggle('active', locale === 'zh');
+document.getElementById('lang-en').classList.toggle('active', locale === 'en');
+document.getElementById('lang-zh').onclick = () => { const u = new URL(location.href); u.searchParams.set('lang','zh'); location.href = u; };
+document.getElementById('lang-en').onclick = () => { const u = new URL(location.href); u.searchParams.set('lang','en'); location.href = u; };
+
+const CHANNEL = 'ch_walk';
+let sockets = [];
+
+function place(el, x, y) {
+  el.hidden = false;
+  el.style.left = (50 + x * 5) + '%';
+  el.style.top = (50 + y * 5) + '%';
+}
+
+function applyState(state) {
+  if (!state || !state.pos) return;
+  if (state.pos.u_lin) place(document.getElementById('actor-lin'), state.pos.u_lin.x, state.pos.u_lin.y);
+  if (state.pos.u_zhou) place(document.getElementById('actor-zhou'), state.pos.u_zhou.x, state.pos.u_zhou.y);
+}
+
+async function session(id) {
+  const res = await fetch('v1/sessions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/vnd.ocp+json' },
+    body: JSON.stringify({ id, password: 'demo-pass' })
+  });
+  const data = await res.json();
+  return data.token;
+}
+
+async function admit(token) {
+  const res = await fetch('v1/channels/' + CHANNEL + '/admissions', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.ocp+json', 'Content-Type': 'application/json' },
+    body: '{}'
+  });
+  return res.json();
+}
+
+function openPlayer(actorId, admission) {
+  if (admission.url && String(admission.url).startsWith('inproc:') && window.OCP_WALK_DEMO) {
+    return window.OCP_WALK_DEMO.openPlayer(actorId, admission, applyState);
+  }
+  const ws = new WebSocket(admission.url);
+  ws.binaryType = 'arraybuffer';
+  let inputSeq = 1;
+  const join = encodeOcm1({
+    kind: 'join', seq: 0, channelId: CHANNEL, actorId,
+    payload: new TextEncoder().encode(admission.token)
+  });
+  ws.onopen = () => ws.send(join);
+  ws.onmessage = (ev) => {
+    const frame = decodeOcm1(new Uint8Array(ev.data));
+    if (!frame || frame.kind !== 'snapshot') return;
+    try { applyState(JSON.parse(new TextDecoder().decode(frame.payload))); } catch (_) {}
+  };
+  return {
+    sendDir(dir) {
+      const pkt = encodeOcm1({
+        kind: 'input', seq: inputSeq++, channelId: CHANNEL, actorId,
+        payload: new Uint8Array([dir])
+      });
+      ws.send(pkt);
+    }
+  };
+}
+
+document.getElementById('walk-start').onclick = async () => {
+  const log = document.getElementById('walk-log');
+  log.textContent = '';
+  const linTok = await session('u_lin');
+  const zhouTok = await session('u_zhou');
+  const a1 = await admit(linTok);
+  const a2 = await admit(zhouTok);
+  if (!a1.url || !a2.url) { log.textContent = 'admission failed'; return; }
+  const pLin = openPlayer('u_lin', a1);
+  const pZhou = openPlayer('u_zhou', a2);
+  sockets = [pLin, pZhou];
+  window.onkeydown = (ev) => {
+    if (!sockets.length) return;
+    if (ev.key === 'ArrowLeft') pLin.sendDir(0);
+    if (ev.key === 'ArrowRight') pLin.sendDir(1);
+    if (ev.key === 'ArrowUp') pLin.sendDir(2);
+    if (ev.key === 'ArrowDown') pLin.sendDir(3);
+    if (ev.key === 'a' || ev.key === 'A') pZhou.sendDir(0);
+    if (ev.key === 'd' || ev.key === 'D') pZhou.sendDir(1);
+    if (ev.key === 'w' || ev.key === 'W') pZhou.sendDir(2);
+    if (ev.key === 's' || ev.key === 'S') pZhou.sendDir(3);
+  };
+};
+
+void SNAPSHOT;
+</script>
+</body>
+</html>
