@@ -6,6 +6,7 @@ import {
   resolveLocale,
   messagesFor,
   displayChannelTitle,
+  displaySeedText,
   titleFilterNeedles,
 } from '../src/uiLocale.js';
 
@@ -71,6 +72,15 @@ describe('resolveLocale', () => {
     assert.equal(displayChannelTitle('ch_draft', '接口草案', 'en'), 'API draft');
     assert.equal(displayChannelTitle('', '首页文案', 'en'), 'Home page copy');
     assert.equal(displayChannelTitle('ch_custom', '自定义', 'en'), '自定义');
+  });
+
+  it('displaySeedText maps other seed UI strings', () => {
+    assert.equal(displaySeedText('示例会话', 'en'), 'Sample chat');
+    assert.equal(displaySeedText('撰写中', 'en'), 'In progress');
+    assert.equal(displaySeedText('所属项目', 'en'), 'Parent project');
+    assert.equal(displaySeedText('频道是可寻址的容器，讨论附在频道上。', 'en').includes('addressable'), true);
+    assert.equal(displaySeedText('自定义', 'en'), '自定义');
+    assert.equal(displaySeedText('撰写中', 'zh'), '撰写中');
   });
 
   it('titleFilterNeedles maps English UI filter to Chinese seed titles', () => {

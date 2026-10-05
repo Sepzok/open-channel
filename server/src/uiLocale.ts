@@ -128,6 +128,43 @@ export const SEED_CHANNEL_TITLES: Record<string, { zh: string; en: string }> = {
   ch_walk: { zh: '走动房间', en: 'Walk room' },
 };
 
+/** Exact Chinese seed strings → English for UI display. Disk and API stay Chinese. */
+export const SEED_TEXT_EN: Record<string, string> = {
+  '示例会话': 'Sample chat',
+  '示例任务': 'Sample tasks',
+  '示例笔记': 'Sample notes',
+  '融合台': 'Fusion Console',
+  '林可': 'Lin Ke',
+  '周宁': 'Zhou Ning',
+  '许安': 'Xu An',
+  '访客': 'Guest',
+  '临时访问': 'Temporary access',
+  '撰写中': 'In progress',
+  '术语.txt': 'terms.txt',
+  '所属项目': 'Parent project',
+  '配图未导出前，首页文案先不定稿': 'Hold home copy until art is exported',
+  '下午的稿子我放在笔记里了': 'I put this afternoon’s draft in notes',
+  '我看完就在任务里标进度': 'I’ll mark progress on the task after I read it',
+  '今天把配图导出': 'Export the art today',
+  '文案以笔记里的口径为准': 'Copy follows the wording in notes',
+  '对外官网的信息架构和首页。': 'Information architecture and home page for the public site.',
+  '按笔记里的口径写首页主标题和副标题。': 'Write the home headline and subhead using the wording in notes.',
+  '导出首页用的三张图。': 'Export the three images for the home page.',
+  '主标题先用笔记里的那句。': 'Use the line from notes for the headline for now.',
+  '频道是可寻址的容器，讨论附在频道上。':
+    'A channel is an addressable container; discussion hangs on the channel.',
+  '链接把相关频道连起来，分享给出外部可打开的地址。':
+    'Links connect related channels; shares give an address others can open.',
+  '频道、讨论、链接是三条基本记录。': 'Channel, discussion, and link are the three basic records.',
+  '这里的容器包括会话、任务和笔记。': 'Container here includes chat, tasks, and notes.',
+  '频道\n讨论\n链接\n': 'channel\ndiscussion\nlink\n',
+};
+
+export function displaySeedText(text: string, locale: Locale): string {
+  if (locale === 'zh' || !text) return text;
+  return SEED_TEXT_EN[text] ?? text;
+}
+
 export function displayChannelTitle(
   channelId: string,
   fallbackTitle: string,
@@ -139,7 +176,7 @@ export function displayChannelTitle(
   for (const row of Object.values(SEED_CHANNEL_TITLES)) {
     if (row.zh === fallbackTitle) return row.en;
   }
-  return fallbackTitle;
+  return displaySeedText(fallbackTitle, locale);
 }
 
 /** Map UI filter text to Chinese title needles for provider `title co` (seeds stay Chinese). */

@@ -29,6 +29,8 @@ OCP 只描述 HTTP 上的文档资源。对局状态不进频道正文、讨论�
 
 面向用户的界面按当前 locale：中文用行业双字词（频道、讨论、链接、修订、分享），英文用对应行业词（channel、discussion、link、revision、share）。融合台标签以 `docs/PLAN.md` / `docs/en/PLAN.md` 为准。按钮和分区用两个字及以上（或英文多词）的行业词，不要用单个汉字当标签。协议与开源入口文档以中文为规范路径，英文为 `docs/en/` 与 `*.en.md` 镜像。
 
+实现计划、Agent 写的「不做」清单不是用户意图；用户原句优先。计划里多出来的禁令或收窄范围，改掉并在回复里说明。
+
 ## 测试
 
 改服务端或 SDK 后运行 `npm test`；Python SDK 跑 `npm run test:python`；改融合台或 E2E 相关逻辑跑 `npm run test:e2e`。测试须自起进程、临时 `dataDir`，不占用固定 8781–8783。E2E 使用本机 Chrome（Playwright `channel: 'chrome'`），不要写进默认 CI。

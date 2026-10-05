@@ -1,19 +1,24 @@
 import type { Block, Channel, Entry, Share } from './types.js';
-import { blockTextContent, escapeHtml } from './util.js';
-import { displayChannelTitle, messagesFor, type Locale } from './uiLocale.js';
+import { escapeHtml } from './util.js';
+import { displayChannelTitle, displaySeedText, messagesFor, type Locale } from './uiLocale.js';
 
-function renderBlocks(blocks: Block[], shareToken: string, publicOrigin: string): string {
+function renderBlocks(
+  blocks: Block[],
+  shareToken: string,
+  publicOrigin: string,
+  locale: Locale,
+): string {
   return blocks
     .map((b) => {
       if (b.type === 'text') {
-        return `<p>${escapeHtml(b.text)}</p>`;
+        return `<p>${escapeHtml(displaySeedText(b.text, locale))}</p>`;
       }
       if (b.type === 'file') {
         const url = `${publicOrigin}/s/${shareToken}/files/${escapeHtml(b.file.id)}`;
-        return `<p><a href="${url}">${escapeHtml(b.file.name)}</a></p>`;
+        return `<p><a href="${url}">${escapeHtml(displaySeedText(b.file.name, locale))}</a></p>`;
       }
       if (b.type === 'embed') {
-        return `<p><a href="${escapeHtml(b.embed.url)}">${escapeHtml(b.embed.title)}</a></p>`;
+        return `<p><a href="${escapeHtml(b.embed.url)}">${escapeHtml(displaySeedText(b.embed.title, locale))}</a></p>`;
       }
       return '';
     })
@@ -31,18 +36,28 @@ export function sharePageHtml(opts: {
   const locale = opts.locale ?? 'zh';
   const t = messagesFor(locale);
   const channelTitle = displayChannelTitle(channel.id, channel.title, locale);
-  const bodyHtml = renderBlocks(channel.body, share.token, publicOrigin);
+  const bodyHtml = renderBlocks(channel.body, share.token, publicOrigin, locale);
   const extHtml =
     channel.ext && Object.keys(channel.ext).length
       ? `<section class="ext">${Object.entries(channel.ext)
-          .map(([k, v]) => `<div>${escapeHtml(k)}：${escapeHtml(String(v))}</div>`)
+          .map(([k, v]) => `<div>${escapeHtml(k)}：${escapeHtml(displaySeedText(String(v), locale))}</div>`)
           .join('')}</section>`
       : '';
   const entriesHtml = entries
     .filter((e) => e.deleted_at === null)
     .map((e) => {
-      const author = escapeHtml(e.author.display_name);
-      const text = escapeHtml(blockTextContent(e.body));
+      const author = escapeHtml(displaySeedText(e.author.display_name, locale));
+      const text = escapeHtml(
+        e.body
+          .map((b) => {
+            if (b.type === 'text') return displaySeedText(b.text, locale);
+            if (b.type === 'file') return displaySeedText(b.file.name, locale);
+            if (b.type === 'embed') return displaySeedText(b.embed.title, locale);
+            return '';
+          })
+          .filter(Boolean)
+          .join('\n'),
+      );
       return `<article class="entry"><div class="author">${author}</div><div class="text">${text}</div></article>`;
     })
     .join('\n');

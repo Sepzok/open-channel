@@ -259,6 +259,7 @@ describe('share mechanisms', () => {
     assert.match(byQueryBody, />Send</);
     assert.match(byQueryBody, /Add a comment/);
     assert.match(byQueryBody, /<h1>API draft<\/h1>/);
+    assert.match(byQueryBody, /addressable container/);
     assert.doesNotMatch(byQueryBody, />发送</);
     assert.doesNotMatch(byQueryBody, /<h1>接口草案<\/h1>/);
 

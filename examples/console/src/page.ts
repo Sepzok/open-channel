@@ -1,8 +1,9 @@
-import { SEED_CHANNEL_TITLES, UI_MESSAGES, type Locale } from '../../../server/src/uiLocale.js';
+import { SEED_CHANNEL_TITLES, SEED_TEXT_EN, UI_MESSAGES, type Locale } from '../../../server/src/uiLocale.js';
 
 export function renderPage(locale: Locale = 'zh'): string {
   const messagesJson = JSON.stringify(UI_MESSAGES).replace(/</g, '\\u003c');
   const seedTitlesJson = JSON.stringify(SEED_CHANNEL_TITLES).replace(/</g, '\\u003c');
+  const seedTextJson = JSON.stringify(SEED_TEXT_EN).replace(/</g, '\\u003c');
   const initial = JSON.stringify(locale);
   return `<!DOCTYPE html>
 <html lang="${locale === 'en' ? 'en' : 'zh-CN'}">
@@ -65,6 +66,7 @@ export function renderPage(locale: Locale = 'zh'): string {
 <script>
 const MESSAGES = ${messagesJson};
 const SEED_TITLES = ${seedTitlesJson};
+const SEED_TEXT = ${seedTextJson};
 const STORAGE_KEY = 'ocp-console-lang';
 let locale = ${initial};
 try {
@@ -81,13 +83,19 @@ let channels = [];
 let selected = null;
 let detail = null;
 
+function displaySeedText(s) {
+  if (locale === 'zh' || !s) return s;
+  if (SEED_TEXT[s]) return SEED_TEXT[s];
+  return s;
+}
+
 function displayChannelTitle(id, fallback) {
   if (locale === 'zh') return fallback;
   if (id && SEED_TITLES[id]) return SEED_TITLES[id].en;
   for (const row of Object.values(SEED_TITLES)) {
     if (row.zh === fallback) return row.en;
   }
-  return fallback;
+  return displaySeedText(fallback);
 }
 
 function applyChrome() {
@@ -138,7 +146,7 @@ function renderList() {
   }
   el.innerHTML = channels.map((row) => {
     if (!row.providerAvailable || row.channel.type === 'unavailable') {
-      return '<div class="channel-item unavailable"><div>' + escapeHtml(row.providerName) + '</div><div class="channel-meta">' +
+      return '<div class="channel-item unavailable"><div>' + escapeHtml(displaySeedText(row.providerName)) + '</div><div class="channel-meta">' +
         escapeHtml(t.sourceUnavailable) + '</div></div>';
     }
     const label = t.typeLabels[row.channel.type] || row.channel.type;
@@ -146,7 +154,7 @@ function renderList() {
     const active = selected && selected.providerId === row.providerId && selected.channelId === row.channel.id ? ' active' : '';
     return '<button type="button" class="channel-item' + active + '" data-provider="' + row.providerId + '" data-id="' + row.channel.id + '">' +
       '<div>' + escapeHtml(title) + '</div>' +
-      '<div class="channel-meta">' + escapeHtml(row.providerName) + ' · ' + label + '</div></button>';
+      '<div class="channel-meta">' + escapeHtml(displaySeedText(row.providerName)) + ' · ' + label + '</div></button>';
   }).join('');
   el.querySelectorAll('.channel-item[data-provider]').forEach((btn) => {
     btn.addEventListener('click', () => openChannel(btn.dataset.provider, btn.dataset.id));
@@ -167,9 +175,9 @@ async function openChannel(providerId, channelId) {
 
 function blockText(blocks) {
   return (blocks || []).map((b) => {
-    if (b.type === 'text') return b.text;
-    if (b.type === 'file') return b.file?.name || '';
-    if (b.type === 'embed') return b.title || b.embed?.title || '';
+    if (b.type === 'text') return displaySeedText(b.text);
+    if (b.type === 'file') return displaySeedText(b.file?.name || '');
+    if (b.type === 'embed') return displaySeedText(b.title || b.embed?.title || '');
     return '';
   }).filter(Boolean).join('\\n');
 }
@@ -191,7 +199,7 @@ function renderDetail() {
   if (ext && Object.keys(ext).length) {
     html += '<div class="section-band">' + escapeHtml(t.meta) + '</div><div class="section-body">';
     Object.keys(ext).forEach((k) => {
-      html += '<div class="link-row">' + escapeHtml(k) + '：' + escapeHtml(String(ext[k])) + '</div>';
+      html += '<div class="link-row">' + escapeHtml(k) + '：' + escapeHtml(displaySeedText(String(ext[k]))) + '</div>';
     });
     html += '</div>';
   }
@@ -202,7 +210,7 @@ function renderDetail() {
   if (caps.entries) {
     html += '<div class="section-band">' + escapeHtml(t.entries) + '</div><div class="section-body" id="entries">';
     (detail.entries?.data || detail.entries || []).forEach((e) => {
-      html += '<div class="entry"><div class="entry-author">' + escapeHtml(e.author.display_name) + '</div><div>' + escapeHtml(blockText(e.body)) + '</div></div>';
+      html += '<div class="entry"><div class="entry-author">' + escapeHtml(displaySeedText(e.author.display_name)) + '</div><div>' + escapeHtml(blockText(e.body)) + '</div></div>';
     });
     html += '<div class="entry-compose"><textarea id="entry-text" placeholder="' + escapeHtml(t.writeEntry) + '"></textarea><button type="button" id="send-entry">' +
       escapeHtml(t.send) + '</button></div></div>';
@@ -299,7 +307,7 @@ async function openAssociate() {
     const title = displayChannelTitle(row.channel.id, row.channel.title);
     return '<button type="button" class="channel-item" data-provider="' + row.providerId + '" data-id="' + row.channel.id + '" data-title="' + encodeURIComponent(row.channel.title) + '">' +
       '<div>' + escapeHtml(title) + '</div>' +
-      '<div class="channel-meta">' + escapeHtml(row.providerName) + '</div></button>';
+      '<div class="channel-meta">' + escapeHtml(displaySeedText(row.providerName)) + '</div></button>';
   }).join('');
   panel.querySelectorAll('.channel-item').forEach((btn) => {
     btn.addEventListener('click', () => associateTo(btn.dataset.provider, btn.dataset.id, decodeURIComponent(btn.dataset.title)));

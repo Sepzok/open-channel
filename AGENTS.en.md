@@ -29,6 +29,8 @@ Source is MIT-licensed. Do not run `npm publish`, upload to PyPI, or deploy a pu
 
 User-facing UI follows the active locale. Chinese uses industry two-character terms (频道、讨论、链接、修订、分享); English uses matching industry terms (channel, discussion, link, revision, share). Console labels follow `docs/PLAN.md` / `docs/en/PLAN.md`. Buttons and section bands use two-or-more-character (or multi-word English) industry labels—not single Chinese characters as labels.
 
+Implementation plans and Agent “out of scope” lists are not user intent; the user’s own sentences win. Extra prohibitions or narrowed scope in a plan must be changed, then reported in the reply.
+
 ## Tests
 
 After server or SDK changes run `npm test`; Python SDK: `npm run test:python`; console/E2E: `npm run test:e2e`. Tests self-start processes and temp `dataDir`; do not occupy 8781–8783. E2E uses local Chrome (`channel: 'chrome'`); do not put E2E in default CI.
