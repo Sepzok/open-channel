@@ -70,4 +70,5 @@ server.listen(port, host, () => {
   optionsHolder.publicOrigin = options.publicOrigin;
   console.log(`walk provider ${options.publicOrigin}`);
   console.log(`walk match ${match.address}`);
+  if (match.wsAddress) console.log(`walk match ws ${match.wsAddress}`);
 });

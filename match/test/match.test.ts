@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import dgram from 'node:dgram';
-import { createMatchHost, sendFrame, signAdmission, verifyAdmission, decodeFrame } from '../src/index.js';
+import { createMatchHost, sendFrame, sendFrameWs, openMatchWs, signAdmission, verifyAdmission, decodeFrame } from '../src/index.js';
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -270,6 +270,96 @@ describe('match host', () => {
     await sleep(40);
     assert.equal(host.peerCount('ch_f'), 1);
     a.close();
+    await host.close();
+  });
+
+  it('websocket binary frames share the same reduce path', async () => {
+    const secret = 's7';
+    const exp = new Date(Date.now() + 60_000).toISOString();
+    const t1 = signAdmission(secret, { id: 'ad_ws1', channelId: 'ch_ws', actorId: 'u_lin', exp });
+    const t2 = signAdmission(secret, { id: 'ad_ws2', channelId: 'ch_ws', actorId: 'u_zhou', exp });
+    let ended = 0;
+    const host = await createMatchHost({
+      secret,
+      tickMs: 20,
+      initialState: 0,
+      reduce: (n, batch) => n + batch.reduce((s, b) => s + b.payload.length, 0),
+      encode: (n) => Buffer.from(String(n)),
+      shouldEnd: (n) => n >= 2,
+      onEnd: () => {
+        ended += 1;
+      },
+    });
+    assert.ok(host.wsAddress);
+    const a = await openMatchWs(host.wsAddress!);
+    const b = await openMatchWs(host.wsAddress!);
+    sendFrameWs(a, {
+      kind: 'join',
+      seq: 0,
+      channelId: 'ch_ws',
+      actorId: 'u_lin',
+      payload: Buffer.from(t1),
+    });
+    sendFrameWs(b, {
+      kind: 'join',
+      seq: 0,
+      channelId: 'ch_ws',
+      actorId: 'u_zhou',
+      payload: Buffer.from(t2),
+    });
+    await waitFor(() => host.peerCount('ch_ws') === 2);
+    sendFrameWs(a, {
+      kind: 'input',
+      seq: 1,
+      channelId: 'ch_ws',
+      actorId: 'u_lin',
+      payload: Buffer.from([1]),
+    });
+    sendFrameWs(b, {
+      kind: 'input',
+      seq: 1,
+      channelId: 'ch_ws',
+      actorId: 'u_zhou',
+      payload: Buffer.from([1]),
+    });
+    await waitFor(() => ended === 1);
+    assert.equal(host.hasChannel('ch_ws'), false);
+    assert.equal(ended, 1);
+    a.close();
+    b.close();
+    await host.close();
+  });
+
+  it('websocket text frames do not enter reduce', async () => {
+    const secret = 's8';
+    const token = signAdmission(secret, {
+      id: 'ad_txt',
+      channelId: 'ch_txt',
+      actorId: 'u_lin',
+      exp: new Date(Date.now() + 60_000).toISOString(),
+    });
+    const host = await createMatchHost({
+      secret,
+      tickMs: 20,
+      initialState: 0,
+      reduce: () => {
+        throw new Error('reduce must not run');
+      },
+      encode: (n) => Buffer.from(String(n)),
+    });
+    const ws = await openMatchWs(host.wsAddress!);
+    sendFrameWs(ws, {
+      kind: 'join',
+      seq: 0,
+      channelId: 'ch_txt',
+      actorId: 'u_lin',
+      payload: Buffer.from(token),
+    });
+    await waitFor(() => host.hasChannel('ch_txt'));
+    ws.send('not-binary');
+    await sleep(60);
+    assert.equal(host.reduceCalls, 0);
+    ws.close();
     await host.close();
   });
 });

@@ -64,13 +64,14 @@
 
 ## 传输
 
-帧按数据报定义，不先把协议钉死成某一种套接字：
+帧按数据报语义定义，承载可换：
 
-- 原生客户端用 UDP。
-- 浏览器没有裸 UDP 时，同一帧放到 WebRTC 的不可靠数据通道。
-- WebSocket 只作为退化承载体，并接受「全部变成可靠有序」的代价。这不是 OCP 的能力，也不把 WebSocket 写进 `/v1`。
+- 原生客户端用 UDP（`MatchHost.address`）。
+- 浏览器没有裸 UDP：本仓对局进程提供 **WebSocket 二进制入口**（`MatchHost.wsAddress`），解码后进同一 `reduce`。接受「全部变成可靠有序」的代价。
+- 更接近可丢数据报时，第三方可把同一帧放到 WebRTC 不可靠数据通道；本仓不实现 WebRTC。
+- 这不是 OCP 的能力，也不把 WebSocket / WebRTC 写进 `/v1`。入场仍是 `POST .../admissions`，`url` 由提供方配置为 `udp://` 或 `ws://`。
 
-本仓参考实现与走动例子只覆盖 Node 上的 UDP。
+本仓参考实现同时听 UDP 与 WebSocket；走动例子的 `liveUrl` 仍用 UDP，进程日志会打印 `wsAddress` 供浏览器对接。
 
 ## 禁止（薄路径）
 

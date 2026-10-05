@@ -23,9 +23,11 @@ createMatchHost({
   initialState,
   shouldEnd?: (state) => boolean,
   onEnd?: (channelId, snapshot) => void,
+  websocket?: boolean, // 默认 true，另开 wsAddress
 })
 ```
 
+返回值含 `address`（`udp://…`）与 `wsAddress`（`ws://…`，可关）。
 `batch` 是本拍收到的 `{ actorId, kind, payload }`。`payload` 是不透明字节。进程不解析坐标。
 
 `reduce` 没被调用时，快照字节保持上次 `encode` 的结果。人走光或 `shouldEnd` 为真时丢掉该局内存；`onEnd` 只触发一次。
@@ -45,4 +47,17 @@ createMatchHost({
 
 `join` 的载荷是入场 `token` 的 UTF-8。主机校验通过后登记参与者，并回一条当前快照。
 
-本仓参考实现用 UDP（Node `dgram`）。浏览器没有裸 UDP，本仓例子只覆盖 Node 上的双客户端。不实现匹配池、区域、舰队、WebRTC、反作弊、客户端预测。
+## 传输
+
+同一帧字节可经两种承载进入**同一** `handleFrame` → `reduce`：
+
+| 承载 | 地址形态 | 适用 |
+| --- | --- | --- |
+| UDP | `udp://host:port`（`MatchHost.address`） | 原生客户端 |
+| WebSocket | `ws://host:port`（`MatchHost.wsAddress`） | 浏览器；二进制帧，载荷为完整 OCM1 包 |
+
+`createMatchHost` 默认同时开 UDP 与 WebSocket（`websocket: false` 可关 WS）。OCP 入场仍只有一个 `url`：面向浏览器的提供方把 `liveUrl` 配成 `wsAddress`；原生可继续配 `address`。
+
+WebSocket 是退化承载体：可靠有序，丢包会堵住。浏览器更接近 UDP 的路径是 WebRTC 不可靠数据通道；本仓不实现 WebRTC（需原生依赖），帧合同不变，第三方可自行把同一字节塞进 DataChannel。
+
+不实现：匹配池、区域、舰队、反作弊、客户端预测。
