@@ -76,7 +76,18 @@ function genId(prefix: string): string {
   return `${prefix}_${randomBytes(6).toString('hex')}`;
 }
 
-function problem(code: string, status: number, extra?: Record<string, unknown>) {
+const PROBLEM_STATUS: Record<string, number> = {
+  unauthorized: 401,
+  validation_error: 400,
+  capability_unsupported: 404,
+  not_found: 404,
+  threads_unsupported: 400,
+  anchor_unsupported: 400,
+  share_unavailable: 404,
+};
+
+function problem(code: string, extra?: Record<string, unknown>) {
+  const status = PROBLEM_STATUS[code] ?? 400;
   return {
     type: `urn:ocp:problem:${code.replace(/_/g, '-')}`,
     title: code,
@@ -92,8 +103,17 @@ function sendJson(res: http.ServerResponse, status: number, body: unknown, type 
   res.end(raw);
 }
 
-function sendProblem(res: http.ServerResponse, code: string, status: number, extra?: Record<string, unknown>) {
-  sendJson(res, status, problem(code, status, extra), PROBLEM_JSON);
+function sendProblem(res: http.ServerResponse, code: string, extra?: Record<string, unknown>) {
+  const body = problem(code, extra);
+  sendJson(res, body.status as number, body, PROBLEM_JSON);
+}
+
+function rejectUnimplementedFilter(url: URL, res: http.ServerResponse): boolean {
+  if (url.searchParams.has('filter')) {
+    sendProblem(res, 'validation_error');
+    return true;
+  }
+  return false;
 }
 
 function tokensEqual(a: string, b: string): boolean {
@@ -142,35 +162,68 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    const publicPath =
-      path === '/v1' || path === '/v1/sessions' || path.startsWith('/s/');
+    if (path.startsWith('/s/')) {
+      sendProblem(res, 'share_unavailable');
+      return;
+    }
+
+    const publicPath = path === '/v1' || path === '/v1/sessions';
     if (!publicPath && !authorized(req)) {
-      sendProblem(res, 'unauthorized', 401);
+      sendProblem(res, 'unauthorized');
+      return;
+    }
+
+    const revPath = path.match(/^\/v1\/channels\/[^/]+\/revisions(?:\/|$)/);
+    if (revPath) {
+      sendProblem(res, 'capability_unsupported', { capability: 'revisions' });
+      return;
+    }
+    const sharePath = path.match(/^\/v1\/channels\/[^/]+\/shares(?:\/|$)/) || path.match(/^\/v1\/shares(?:\/|$)/);
+    if (sharePath) {
+      sendProblem(res, 'capability_unsupported', { capability: 'shares' });
       return;
     }
 
     if (method === 'GET' && path === '/v1/channels') {
+      if (rejectUnimplementedFilter(url, res)) return;
       sendJson(res, 200, { data: [channel], next_cursor: null });
       return;
     }
 
-    const chMatch = path.match(/^\/v1\/channels\/([^/]+)(?:\/(entries|links|revisions|shares))?$/);
+    const chMatch = path.match(/^\/v1\/channels\/([^/]+)(?:\/(entries|links))?$/);
     if (chMatch) {
       const chId = chMatch[1]!;
       const sub = chMatch[2];
       if (chId !== 'ch_accept') {
-        sendProblem(res, 'not_found', 404);
+        sendProblem(res, 'not_found');
         return;
       }
       if (!sub && method === 'GET') {
         sendJson(res, 200, channel);
         return;
       }
-      if (sub === 'revisions' || sub === 'shares') {
-        sendProblem(res, 'capability_unsupported', 404, { capability: sub });
+      if (!sub && method === 'PATCH') {
+        const raw = await readBody(req);
+        let o: Record<string, unknown>;
+        try {
+          o = JSON.parse(raw) as Record<string, unknown>;
+        } catch {
+          sendProblem(res, 'validation_error');
+          return;
+        }
+        if (o.body !== undefined) {
+          sendProblem(res, 'capability_unsupported', { capability: 'body' });
+          return;
+        }
+        sendProblem(res, 'not_found');
         return;
       }
       if (sub === 'entries' && method === 'GET') {
+        if (rejectUnimplementedFilter(url, res)) return;
+        if (url.searchParams.has('parent_id')) {
+          sendProblem(res, 'threads_unsupported');
+          return;
+        }
         sendJson(res, 200, { data: entries, next_cursor: null });
         return;
       }
@@ -180,20 +233,28 @@ const server = http.createServer(async (req, res) => {
         try {
           o = JSON.parse(raw) as Record<string, unknown>;
         } catch {
-          sendProblem(res, 'validation_error', 400);
+          sendProblem(res, 'validation_error');
           return;
         }
         if (o.id !== undefined || o.author !== undefined) {
-          sendProblem(res, 'validation_error', 400);
+          sendProblem(res, 'validation_error');
+          return;
+        }
+        if (o.parent_id !== undefined && o.parent_id !== null) {
+          sendProblem(res, 'threads_unsupported');
+          return;
+        }
+        if (o.anchor !== undefined && o.anchor !== null) {
+          sendProblem(res, 'anchor_unsupported');
           return;
         }
         if (o.type !== 'comment' && o.type !== 'message' && o.type !== 'annotation') {
-          sendProblem(res, 'validation_error', 400);
+          sendProblem(res, 'validation_error');
           return;
         }
         const body = o.body as { type: string; text: string; format?: string }[] | undefined;
         if (!Array.isArray(body) || !body[0] || body[0].type !== 'text' || !body[0].text) {
-          sendProblem(res, 'validation_error', 400);
+          sendProblem(res, 'validation_error');
           return;
         }
         const entry: Entry = {
@@ -212,6 +273,7 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       if (sub === 'links' && method === 'GET') {
+        if (rejectUnimplementedFilter(url, res)) return;
         sendJson(res, 200, { data: links.filter((l) => !l.deleted_at), next_cursor: null });
         return;
       }
@@ -221,29 +283,29 @@ const server = http.createServer(async (req, res) => {
         try {
           o = JSON.parse(raw) as Record<string, unknown>;
         } catch {
-          sendProblem(res, 'validation_error', 400);
+          sendProblem(res, 'validation_error');
           return;
         }
         if (o.id !== undefined) {
-          sendProblem(res, 'validation_error', 400);
+          sendProblem(res, 'validation_error');
           return;
         }
         const hasTarget = o.target_id !== undefined;
         const hasUrl = o.target_url !== undefined;
         if (hasTarget === hasUrl) {
-          sendProblem(res, 'validation_error', 400);
+          sendProblem(res, 'validation_error');
           return;
         }
         if (hasTarget && o.target_id !== 'ch_accept') {
-          sendProblem(res, 'validation_error', 400);
+          sendProblem(res, 'validation_error');
           return;
         }
         if (hasUrl && (typeof o.target_url !== 'string' || !isAbsoluteHttpUrl(o.target_url))) {
-          sendProblem(res, 'validation_error', 400);
+          sendProblem(res, 'validation_error');
           return;
         }
         if (typeof o.type !== 'string') {
-          sendProblem(res, 'validation_error', 400);
+          sendProblem(res, 'validation_error');
           return;
         }
         const link: Link = {
@@ -266,7 +328,7 @@ const server = http.createServer(async (req, res) => {
     if (entryGet && method === 'GET') {
       const row = entries.find((e) => e.id === entryGet[1]);
       if (!row) {
-        sendProblem(res, 'not_found', 404);
+        sendProblem(res, 'not_found');
         return;
       }
       sendJson(res, 200, row);
@@ -277,7 +339,7 @@ const server = http.createServer(async (req, res) => {
     if (linkDel && method === 'DELETE') {
       const row = links.find((l) => l.id === linkDel[1] && !l.deleted_at);
       if (!row) {
-        sendProblem(res, 'not_found', 404);
+        sendProblem(res, 'not_found');
         return;
       }
       (row as { deleted_at: string }).deleted_at = new Date().toISOString();
@@ -285,10 +347,10 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    sendProblem(res, 'not_found', 404);
+    sendProblem(res, 'not_found');
   } catch (err) {
     console.error(err);
-    sendProblem(res, 'validation_error', 400);
+    sendProblem(res, 'validation_error');
   }
 });
 

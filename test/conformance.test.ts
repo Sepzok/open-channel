@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { Client, channelResourceUrl, parseChannelResourceUrl, matchProvider } from '../sdk/typescript/src/index.js';
+import { Client, OcpError, channelResourceUrl, parseChannelResourceUrl, matchProvider } from '../sdk/typescript/src/index.js';
 import { NOTES_CAPS, TASKS_CAPS, loadSeed, startServer } from '../server/test/helpers.js';
 import { assertDiscoveryAndLinks } from './conformance.js';
 
@@ -108,5 +108,63 @@ describe('notes and native black-box', () => {
       nativeId: 'T-100',
       otherChannelUrl: other,
     });
+  });
+
+  it('native rejects undeclared capabilities instead of empty lists', async () => {
+    const client = new Client({ baseUrl: nativeUrl, token: 'demo-token' });
+    const disco = (await client.getDiscovery({ anonymous: true })) as {
+      capabilities: { body: boolean; entry_threads: boolean; shares: boolean; revisions: boolean };
+    };
+    assert.equal(disco.capabilities.body, false);
+    assert.equal(disco.capabilities.entry_threads, false);
+    assert.equal(disco.capabilities.shares, false);
+    assert.equal(disco.capabilities.revisions, false);
+
+    async function expectCode(fn: () => Promise<unknown>, code: string, capability?: string) {
+      try {
+        await fn();
+        assert.fail(`expected ${code}`);
+      } catch (e) {
+        assert.ok(e instanceof OcpError);
+        assert.equal(e.code, code);
+        if (capability) assert.equal(e.body.capability, capability);
+        assert.equal((e.body as { data?: unknown }).data, undefined);
+      }
+    }
+
+    await expectCode(() => client.listRevisions('ch_accept'), 'capability_unsupported', 'revisions');
+    await expectCode(() => client.getRevision('ch_accept', 'rev_x'), 'capability_unsupported', 'revisions');
+    await expectCode(() => client.restoreRevision('ch_accept', 'rev_x'), 'capability_unsupported', 'revisions');
+    await expectCode(
+      () => client.updateChannel('ch_accept', { body: [{ type: 'text', text: 'x', format: 'plain' }] }),
+      'capability_unsupported',
+      'body',
+    );
+    await expectCode(
+      () =>
+        client.createEntry('ch_accept', {
+          type: 'comment',
+          parent_id: 'en_accept_1',
+          body: [{ type: 'text', text: '子条', format: 'plain' }],
+        }),
+      'threads_unsupported',
+    );
+    await expectCode(
+      () =>
+        client.createEntry('ch_accept', {
+          type: 'comment',
+          anchor: { block_id: 'blk_x' },
+          body: [{ type: 'text', text: '锚', format: 'plain' }],
+        }),
+      'anchor_unsupported',
+    );
+    await expectCode(() => client.listChannels({ filter: 'title co "验收"' }), 'validation_error');
+    await expectCode(() => client.listEntries('ch_accept', { parent_id: 'en_accept_1' }), 'threads_unsupported');
+
+    const share = await fetch(`${nativeUrl}/s/nope`);
+    const shareBody = (await share.json()) as { code: string; data?: unknown };
+    assert.equal(share.status, 404);
+    assert.equal(shareBody.code, 'share_unavailable');
+    assert.equal(shareBody.data, undefined);
   });
 });

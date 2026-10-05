@@ -13,7 +13,7 @@
 最小可被融合台读的集合：
 
 1. `GET /v1`：`protocol`、`version`、`provider`、`actor`、`capabilities`
-2. 按能力打开的频道 / 讨论 / 链接路由；没有的能力返回 `capability_unsupported`，不要空列表冒充
+2. 按能力打开的频道 / 讨论 / 链接路由。`GET /v1` 把没有的能力写成 `false`。对应路由返回 `capability_unsupported`（含 `.../revisions/{id}` 与 restore），不要空列表、也不要用普通 `not_found` 冒充「没有历史」。讨论串未开则 `parent_id` 为 `threads_unsupported`；无正文则锚点为 `anchor_unsupported`。未实现 SCIM 时，列表带 `filter` 必须 400，禁止当没看见该参数仍 200。
 3. Bearer（引导令牌、会话或授权，见 SPEC §3）
 4. 错误为 `application/problem+json`，含 `code`
 

@@ -143,7 +143,7 @@ Python 用同名 snake_case。查询参数、路径、请求体与 SPEC 相同�
 11. 链接 `type`：对 `ch_proj`，`direction=in&type=parent` 含 `ch_task_copy` 与 `ch_task_img`；`type=blocks` 不含它们。对 `ch_draft`，`direction=out&type=references` 指向术语表。无 `type` 时出边条数与加过滤前一致。
 12. 自定义字段与 SCIM `filter`：schema 允许 `ext` 数字，嵌套对象与非法键名不通过。创建后 GET 仍为 number。`filter=ext.artist eq "林可"` 命中；AND / 同键 OR / 跨键括号 OR / `ne`（缺键不命中）/ `co` / `duration_ms gt` 按 SPEC。非法比较字面量、过长或过深 `filter`、查询参数名 `ext.*` 为 400。PATCH `ext: {}` 后 `eq` 与 `pr` 不命中。SDK 把 `filter` 发到查询串。讨论列表 `filter=type eq "comment"`、链接列表 `filter=title co "所属"` 在服务端过滤。非法种子 `ext` 导入失败且不写 `store.json`。融合台筛选「首页」走提供方 `title co`，可见「首页文案」、不见「发布小组」。打开「首页文案」可见「撰写中」。
 
-13. 跨提供方关联与独立适配：`parseChannelResourceUrl('https://example.com/spec')` 为 `null`；`http://127.0.0.1:9/v1/channels/ch_proj` 解析出 origin 与 `ch_proj`。对笔记 `ch_draft` `POST` `type=references` 且 `target_url` 为任务提供方的频道资源 URL，随后 `GET` 该链接仍是 `target_url`、没有 `target_id`。`ftp://x` 创建链接为 400。融合台打开「接口草案」，点「关联」选「首页文案」，「其它」出现该标题；刷新后再打开仍在；点它进入任务提供方频道且可见「撰写中」。`examples/native` 源码不含 `createApp` 与 `@open-channel/server`；`GET /v1` 的 capabilities 与频道 `ext.native_id` 能读回；对 native 与 notes 都跑同一套发现 + 链接形状黑盒。
+13. 跨提供方关联与独立适配：`parseChannelResourceUrl('https://example.com/spec')` 为 `null`；`http://127.0.0.1:9/v1/channels/ch_proj` 解析出 origin 与 `ch_proj`。对笔记 `ch_draft` `POST` `type=references` 且 `target_url` 为任务提供方的频道资源 URL，随后 `GET` 该链接仍是 `target_url`、没有 `target_id`。`ftp://x` 创建链接为 400。融合台打开「接口草案」，点「关联」选「首页文案」，「其它」出现该标题；刷新后再打开仍在；点它进入任务提供方频道且可见「撰写中」。`examples/native` 源码不含 `createApp` 与 `@open-channel/server`；`GET /v1` 的 capabilities 与频道 `ext.native_id` 能读回；对 native 与 notes 都跑同一套发现 + 链接形状黑盒。native 未声明的修订（含嵌套 id 与 restore）、PATCH 正文、分享集合不得返回 `{ data: [] }`；`parent_id` 为 `threads_unsupported`；列表 `filter` 为 400 不是未筛选 200；`GET /s/{token}` 为 `share_unavailable`。
 
 SDK 的 `resolveShare` 发送 `Accept: application/json`。
 
@@ -165,6 +165,7 @@ SDK 的 `resolveShare` 发送 `Accept: application/json`。
 - 跨提供方关联只改页面文案、不 `POST` 链接资源
 - 把对方频道 id 当作本提供方 `target_id`
 - 独立适配例子引用 `@open-channel/server` / `createApp`
+- 独立适配对未声明能力返回空列表，或忽略 `filter` 仍 200
 
 ## 实现顺序
 
