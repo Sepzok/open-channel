@@ -25,6 +25,8 @@ OCP describes HTTP document resources only. Match state does not enter channel b
 
 Source is MIT-licensed. Do not run `npm publish`, upload to PyPI, or deploy a public service. Root `package.json` is `private: true`.
 
+On GitHub this repo is under `Sepzok`: commit as `Sepzok <dev@sepzok.com>`; Contributors must not list other GitHub users; do not add `Co-authored-by: Cursor`. Cross-repo detail: user-level `sepzok-github-identity.mdc`.
+
 ## Copy
 
 User-facing UI follows the active locale. Chinese uses industry two-character terms (频道、讨论、链接、修订、分享); English uses matching industry terms (channel, discussion, link, revision, share). Console labels follow `docs/PLAN.md` / `docs/en/PLAN.md`. The hub (`examples/hub`, default 8779) is an examples directory—not a second fusion console. Each example origin home page matches that product genre (messenger, project board, document, ticket, room stage)—do not reuse fusion-console section bands. Buttons and section bands use two-or-more-character (or multi-word English) industry labels—not single Chinese characters as labels.

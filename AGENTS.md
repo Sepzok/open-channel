@@ -25,6 +25,8 @@ OCP 只描述 HTTP 上的文档资源。对局状态不进频道正文、讨论�
 
 源码以 MIT 公开。不执行 `npm publish`，不向 PyPI 上传，不部署公网服务。根 `package.json` 为 `private: true`。
 
+GitHub 上本仓属 `Sepzok`：提交身份用 `Sepzok <dev@sepzok.com>`，Contributors 不得出现其他 GitHub 用户，不要写 `Co-authored-by: Cursor`。跨仓细则见用户级 `sepzok-github-identity.mdc`。
+
 ## 文案
 
 面向用户的界面按当前 locale：中文用行业双字词（频道、讨论、链接、修订、分享），英文用对应行业词（channel、discussion、link、revision、share）。融合台标签以 `docs/PLAN.md` / `docs/en/PLAN.md` 为准。汇总入口（`examples/hub`，默认 8779）是例子目录页，不要做成第二套融合台。各例子根路径是该品类的展示页（会话、项目台、文稿、工单、房间舞台），不要套融合台分区。按钮和分区用两个字及以上（或英文多词）的行业词，不要用单个汉字当标签。协议与开源入口文档以中文为规范路径，英文为 `docs/en/` 与 `*.en.md` 镜像。
