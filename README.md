@@ -56,4 +56,4 @@ npm run test:e2e
 - `examples/native` — 不引用 `createApp` 的工单适配（第三方服务端起点）
 - `examples/console` — 融合台：多 origin 汇合，并把各方频道用链接关联
 
-把已有产品暴露为 OCP、以及客户端如何对接多个服务端，见 `docs/ADAPT.md`。
+把已有产品暴露为 OCP、以及客户端如何对接多个服务端，见 `docs/ADAPT.md`。修订、分享页、列表 `filter` 的实现入口也在该文档：native 示范「产品没有这些能力」；有这些能力时看笔记例子与可拷模块，不要从 native 开这三项。
