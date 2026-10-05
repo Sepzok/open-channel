@@ -83,7 +83,7 @@ AGENTS.md
 TypeScript：
 
 - `new Client({ baseUrl, token })`
-- `listChannels` `createChannel` `getChannel` `updateChannel` `deleteChannel`
+- `listChannels` `createChannel` `getChannel` `updateChannel` `deleteChannel`（列表查询含 SCIM `filter` 字符串，与 SPEC 相同，不在 SDK 里另做 JSON 查询 DSL）
 - `listEntries` `createEntry` `getEntry` `deleteEntry`
 - `listLinks` `createLink` `deleteLink`
 - `createShare` `getShare` `revokeShare` `resolveShare`（resolve 不带令牌）
@@ -135,6 +135,7 @@ Python 用同名 snake_case。查询参数、路径、请求体与 SPEC 相同�
 9. 融合聚合函数：把其中一个 `baseUrl` 指到未监听的端口时，响应仍包含另外两个提供方的频道，失败来源带「不可用」状态，而不是整次请求失败。
 10. 融合台页面：三个种子标题「发布小组」「首页文案」「接口草案」都可见；打开「接口草案」能看见种子正文中的句子；发送一条讨论后该句出现在讨论区；创建分享后页面出现含 `/s/` 的 URL。用本机 Chrome 真实点击和输入（`locator.click` / `locator.fill` / `locator.press`），不用改 DOM value 冒充。
 11. 链接 `type`：对 `ch_proj`，`direction=in&type=parent` 含 `ch_task_copy` 与 `ch_task_img`；`type=blocks` 不含它们。对 `ch_draft`，`direction=out&type=references` 指向术语表。无 `type` 时出边条数与加过滤前一致。
+12. 自定义字段与 SCIM `filter`：schema 允许 `ext` 数字，嵌套对象与非法键名不通过。创建后 GET 仍为 number。`filter=ext.artist eq "林可"` 命中；AND / 同键 OR / 跨键括号 OR / `ne`（缺键不命中）/ `co` / `duration_ms gt` 按 SPEC。非法比较字面量、过长或过深 `filter`、查询参数名 `ext.*` 为 400。PATCH `ext: {}` 后 `eq` 与 `pr` 不命中。SDK `listChannels` / `list_channels` 把 `filter` 发到查询串，不得只在客户端筛。融合台打开「首页文案」可见「撰写中」。
 
 SDK 的 `resolveShare` 发送 `Accept: application/json`。
 

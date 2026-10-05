@@ -26,8 +26,6 @@
   "deleted_at": null,
   "revision": "rev_initial",
   "ext": {
-    "status": "草稿",
-    "duration_ms": 240000,
-    "featured": false
+    "Artist": "林可"
   }
 }

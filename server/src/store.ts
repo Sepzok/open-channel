@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { AppOptions, Block, Channel, Entry, FileMeta, Link, Revision, Share, StoreData } from './types.js';
+import type { AppOptions, Block, Channel, Entry, ExtValue, FileMeta, Link, Revision, Share, StoreData } from './types.js';
 import { genId, nowIso, trimTitle } from './util.js';
 import { importSeed } from './seed.js';
 
@@ -145,6 +145,7 @@ export class Store {
     order?: 'updated' | 'created';
     limit: number;
     cursor?: string;
+    match?: (ch: Channel) => boolean;
   }): { data: Channel[]; next_cursor: string | null } {
     let items = Object.values(this.data.channels);
     if (!opts.include_deleted) {
@@ -155,6 +156,7 @@ export class Store {
       const since = opts.updated_since;
       items = items.filter((c) => c.updated_at > since);
     }
+    if (opts.match) items = items.filter(opts.match);
     if (opts.order === 'created') {
       items.sort((a, b) => (a.created_at === b.created_at ? a.id.localeCompare(b.id) : a.created_at.localeCompare(b.created_at)));
     } else {
@@ -194,7 +196,7 @@ export function createChannelRecord(
     title: string;
     body?: Block[];
     members?: { id: string; display_name: string; role: string }[];
-    ext?: Record<string, string>;
+    ext?: Record<string, ExtValue>;
   },
   author: { id: string; display_name: string },
   allowSeedIds = false,

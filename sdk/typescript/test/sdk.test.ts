@@ -64,5 +64,23 @@ describe('TypeScript SDK', () => {
 
     const refs = (await client.listLinks('ch_draft', { type: 'references' })) as { data: { target_id: string }[] };
     assert.equal(refs.data[0]?.target_id, 'ch_glossary');
+
+    const created = await client.createChannel({
+      type: 'note',
+      title: '检索样例',
+      body: [],
+      members: [],
+      ext: { artist: '林可', duration_ms: 200000 },
+    });
+    const id = (created.data as { id: string }).id;
+    const filtered = (await client.listChannels({
+      filter: 'ext.artist eq "林可" and ext.duration_ms gt 180000',
+    })) as { data: { id: string }[] };
+    assert.ok(filtered.data.some((c) => c.id === id));
+    const miss = (await client.listChannels({ filter: 'ext.artist eq "别人"' })) as { data: { id: string }[] };
+    assert.equal(
+      miss.data.some((c) => c.id === id),
+      false,
+    );
   });
 });

@@ -41,4 +41,15 @@ describe('schema fixtures', () => {
   it('invalid link both targets', () => {
     assert.equal(validateLink(loadFixture('invalid/link-both-targets.json')), false);
   });
+  it('valid channel ext number', () => {
+    const ch = loadFixture('valid/channel.json') as { ext: { duration_ms: unknown } };
+    assert.equal(typeof ch.ext.duration_ms, 'number');
+    assert.equal(validateCh(ch), true);
+  });
+  it('invalid nested ext object', () => {
+    assert.equal(validateCh(loadFixture('invalid/channel-ext-nested.json')), false);
+  });
+  it('invalid ext key case', () => {
+    assert.equal(validateCh(loadFixture('invalid/channel-ext-key.json')), false);
+  });
 });

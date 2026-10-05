@@ -27,6 +27,12 @@ export function sharePageHtml(opts: {
 }): string {
   const { channel, entries, share, publicOrigin } = opts;
   const bodyHtml = renderBlocks(channel.body, share.token, publicOrigin);
+  const extHtml =
+    channel.ext && Object.keys(channel.ext).length
+      ? `<section class="ext">${Object.entries(channel.ext)
+          .map(([k, v]) => `<div>${escapeHtml(k)}：${escapeHtml(String(v))}</div>`)
+          .join('')}</section>`
+      : '';
   const entriesHtml = entries
     .filter((e) => e.deleted_at === null)
     .map((e) => {
@@ -77,6 +83,7 @@ document.getElementById('share-send').addEventListener('click', async () => {
 <body>
 <main>
   <h1>${escapeHtml(channel.title)}</h1>
+  ${extHtml}
   <section class="body">${bodyHtml}</section>
   <section class="entries">${entriesHtml}</section>
   ${form}

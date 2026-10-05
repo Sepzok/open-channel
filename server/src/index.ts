@@ -16,6 +16,7 @@ import {
   isTypeName,
   nowIso,
   parseByteRange,
+  parseExt,
   parseJsonBody,
   sha256,
   titleValid,
@@ -24,6 +25,7 @@ import {
   wantsShareJson,
 } from './util.js';
 import { sharePageHtml } from './html.js';
+import { matchScimFilter, parseScimFilter } from './scimFilter.js';
 import type { FileMeta } from './types.js';
 
 type IdempotencyRecord = { hash: string; status: number; body: string };
@@ -327,6 +329,7 @@ export function createApp(options: AppOptions): http.Server {
                 title: ch.title,
                 body: ch.body,
                 updated_at: ch.updated_at,
+                ...(ch.ext ? { ext: ch.ext } : {}),
               },
               entries,
             });
@@ -480,6 +483,27 @@ export function createApp(options: AppOptions): http.Server {
           sendProblem(res, 'validation_error', { errors: [{ path: 'limit', message: 'max 100' }] });
           return;
         }
+        for (const key of url.searchParams.keys()) {
+          if (key.startsWith('ext.')) {
+            sendProblem(res, 'validation_error', { errors: [{ path: key, message: 'use filter' }] });
+            return;
+          }
+        }
+        const filters = url.searchParams.getAll('filter');
+        if (filters.length > 1) {
+          sendProblem(res, 'validation_error', { errors: [{ path: 'filter', message: 'duplicate' }] });
+          return;
+        }
+        let match: ((ch: { id: string; type: string; title: string; ext?: Record<string, string | number | boolean> }) => boolean) | undefined;
+        if (filters.length === 1) {
+          const parsed = parseScimFilter(filters[0]!);
+          if (!parsed.ok) {
+            sendProblem(res, 'validation_error', { errors: [{ path: 'filter', message: parsed.message }] });
+            return;
+          }
+          const ast = parsed.ast;
+          match = (ch) => matchScimFilter(ch, ast);
+        }
         const result = store.listChannels({
           type: url.searchParams.get('type') ?? undefined,
           updated_since: url.searchParams.get('updated_since') ?? undefined,
@@ -487,6 +511,7 @@ export function createApp(options: AppOptions): http.Server {
           order: (url.searchParams.get('order') as 'updated' | 'created') ?? 'updated',
           limit,
           cursor: url.searchParams.get('cursor') ?? undefined,
+          match,
         });
         sendJson(res, 200, result);
         return;
@@ -533,9 +558,15 @@ export function createApp(options: AppOptions): http.Server {
             if (!Array.isArray(o.members)) return { status: 400, body: problem('validation_error') };
             members = o.members as { id: string; display_name: string; role: string }[];
           }
+          let ext;
+          if (o.ext !== undefined) {
+            const er = parseExt(o.ext);
+            if (!er.ok) return { status: 400, body: problem('validation_error') };
+            ext = er.ext;
+          }
           const ch = createChannelRecord(
             store,
-            { type: o.type, title: o.title, body: blocks, members, ext: o.ext as Record<string, string> },
+            { type: o.type, title: o.title, body: blocks, members, ext },
             options.actor,
           );
           store.persistSync();
@@ -612,7 +643,10 @@ export function createApp(options: AppOptions): http.Server {
               ch.members = o.members as typeof ch.members;
             }
             if (o.ext !== undefined) {
-              ch.ext = o.ext as Record<string, string>;
+              const er = parseExt(o.ext);
+              if (!er.ok) return { error: 'validation_error' as const };
+              if (er.ext) ch.ext = er.ext;
+              else delete ch.ext;
             }
             ch.updated_at = nowIso();
             if (touchesRevision && options.capabilities.revisions) {
@@ -708,6 +742,12 @@ export function createApp(options: AppOptions): http.Server {
                 return { status: 400, body: problem('anchor_unsupported') };
               }
             }
+            let entryExt;
+            if (o.ext !== undefined) {
+              const er = parseExt(o.ext);
+              if (!er.ok) return { status: 400, body: problem('validation_error') };
+              entryExt = er.ext;
+            }
             const ts = nowIso();
             const entry: Entry = {
               id: genId('en'),
@@ -717,7 +757,7 @@ export function createApp(options: AppOptions): http.Server {
               parent_id: (o.parent_id as string | null) ?? null,
               anchor: (o.anchor as Entry['anchor']) ?? null,
               author: options.actor,
-              ext: o.ext as Record<string, string> | undefined,
+              ext: entryExt,
               created_at: ts,
               updated_at: ts,
               deleted_at: null,
@@ -821,6 +861,12 @@ export function createApp(options: AppOptions): http.Server {
                 return { status: 400, body: problem('validation_error') };
               }
             }
+            let linkExt;
+            if (o.ext !== undefined) {
+              const er = parseExt(o.ext);
+              if (!er.ok) return { status: 400, body: problem('validation_error') };
+              linkExt = er.ext;
+            }
             const link: Link = {
               id: genId('ln'),
               type: o.type,
@@ -828,7 +874,7 @@ export function createApp(options: AppOptions): http.Server {
               target_id: hasTarget ? (o.target_id as string) : undefined,
               target_url: hasUrl ? (o.target_url as string) : undefined,
               title: o.title as string | undefined,
-              ext: o.ext as Record<string, string> | undefined,
+              ext: linkExt,
               created_at: nowIso(),
               deleted_at: null,
             };

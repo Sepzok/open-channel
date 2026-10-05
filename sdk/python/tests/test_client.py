@@ -90,6 +90,20 @@ class SdkPythonTest(unittest.TestCase):
         self.assertEqual(len(after2["data"]), count_before + 1)
         refs = client.list_links("ch_draft", type="references")
         self.assertEqual(refs["data"][0]["target_id"], "ch_glossary")
+        _status, created = client.create_channel(
+            {
+                "type": "note",
+                "title": "检索样例",
+                "body": [],
+                "members": [],
+                "ext": {"artist": "林可", "duration_ms": 200000},
+            }
+        )
+        cid = created["id"]
+        filtered = client.list_channels(filter='ext.artist eq "林可" and ext.duration_ms gt 180000')
+        self.assertTrue(any(c["id"] == cid for c in filtered["data"]))
+        miss = client.list_channels(filter='ext.artist eq "别人"')
+        self.assertFalse(any(c["id"] == cid for c in miss["data"]))
 
 
 if __name__ == "__main__":

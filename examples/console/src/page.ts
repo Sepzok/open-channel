@@ -103,6 +103,14 @@ function renderDetail() {
   const ch = detail.channel;
   const caps = detail.capabilities || {};
   let html = '';
+  const ext = ch.ext && typeof ch.ext === 'object' ? ch.ext : null;
+  if (ext && Object.keys(ext).length) {
+    html += '<div class="section-band">资料</div><div class="section-body">';
+    Object.keys(ext).forEach((k) => {
+      html += '<div class="link-row">' + escapeHtml(k) + '：' + escapeHtml(String(ext[k])) + '</div>';
+    });
+    html += '</div>';
+  }
   if (caps.body) {
     html += '<div class="section-band">正文</div>';
     html += '<div class="section-body body-text">' + escapeHtml(blockText(ch.body)) + '</div>';

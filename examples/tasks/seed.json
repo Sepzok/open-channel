@@ -15,6 +15,7 @@
       "id": "ch_task_copy",
       "type": "task",
       "title": "首页文案",
+      "ext": { "status": "撰写中" },
       "members": [
         { "id": "u_lin", "display_name": "林可", "role": "owner" }
       ],

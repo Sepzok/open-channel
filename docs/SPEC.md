@@ -18,7 +18,7 @@
 | `body` | 块数组。无正文能力时恒为 `[]` |
 | `capabilities` | 该频道能力，v1 与提供方发现文档相同 |
 | `members` | `{ id, display_name, role }[]`。`role` 为 `owner` 或 `member` 或符合 type 语法的扩展 |
-| `ext` | 可选，键值都是字符串，各最多 64 / 256 码位，最多 16 项 |
+| `ext` | 可选。自定义标量袋，最多 16 项。键与第 2 节 `type` 相同（`^[a-z][a-z0-9._-]{0,63}$`）。值为 JSON 字符串、有限数字或布尔。字符串 1–256 码位，空串不允许。禁止 `null`、数组、对象。协议不解释键的行业含义，不提供字段发现。`PATCH` / 创建时整份替换；省略则不变；`ext: {}` 清空后参考实现省略该字段 |
 | `created_at` `updated_at` | 时间 |
 | `deleted_at` | 未删除为 `null` |
 | `revision` | 无修订能力时为 `null`；有则为当前修订 id |
@@ -223,6 +223,28 @@ HTTP 状态与下列 body 同时成立。`Content-Type: application/problem+json
 - `updated_since`：返回 `updated_at` 严格大于该时间的项（删除会更新 `updated_at`）
 - `include_deleted`：`true` 才包含已删除。默认 false
 - `order`：`updated`（默认，`updated_at` 降序）或 `created`（`created_at` 升序）
+- `filter`：可选。IETF SCIM（[RFC 7644 §3.4.2.2](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.2)）过滤表达式的子集。与 `type`、`updated_since`、`include_deleted` **AND**。缺省则不过滤 `ext`。v1 参考实现线性扫描频道数组，不做倒排索引。只用于频道列表，不用于讨论或链接列表。
+
+`filter` 属性路径仅允许 `id`、`type`、`title`、`ext.<key>`（`<key>` 为 type 语法）。其它路径 400 `validation_error`。
+
+算子（RFC 名）：
+
+| 算子 | 适用存储 | 含义 |
+| --- | --- | --- |
+| `eq` `ne` | 字符串 / 数字 / 布尔 | 同类型相等 / 不等 |
+| `co` `sw` `ew` | 仅字符串 | 包含 / 前缀 / 后缀；区分 Unicode 码位；不是正则 |
+| `gt` `ge` `lt` `le` | 仅有限数字 | 数值比较 |
+| `pr` | 任意 | 属性已设。对 `ext.<key>` 即袋子里有该键 |
+
+逻辑：`and` `or` `not`，括号分组。优先级与 RFC 相同：括号，然后 `not`，然后 `and`，然后 `or`。跨键 OR 用括号，例如 `(ext.artist eq "林可" or ext.album eq "周刊")`。
+
+字面量：双引号字符串（仅 `\"` 与 `\\` 转义）；裸 `true`/`false`；十进制 JSON 数字。查询类型与存储类型不一致时该谓词为假，不因此 400。`gt` / `ge` / `lt` / `le` 右侧必须是数字字面量，否则 400。`co` / `sw` / `ew` 右侧必须是字符串字面量，否则 400。不支持 `null` 字面量。
+
+缺键：`eq` / `co` / `sw` / `ew` / 比较 → 假；`ne` → 假（无值谈不上不等于）；`pr` → 假。
+
+上限：`filter` 原文最长 1024 个 Unicode 码位；括号深度最多 4；原子谓词最多 16。超出、语法非法、或出现以 `ext.` 开头的**查询参数名**（自造 `ext.artist.eq=` 一类）：400 `validation_error`。不得把 JSON 树或 Lucene / Elasticsearch 查询当作 `filter`。
+
+示例：`GET /v1/channels?filter=ext.artist eq "林可" and ext.duration_ms gt 180000`
 
 讨论列表查询：`order` 为 `asc`（默认）或 `desc`，按 `created_at`；`parent_id` 若给出则只返回该父的直接子条（不含父条本身）。
 
@@ -345,15 +367,16 @@ HTTP 状态与下列 body 同时成立。`Content-Type: application/problem+json
     "type": "note",
     "title": "接口草案",
     "body": [],
-    "updated_at": "2026-01-01T00:00:00.000Z"
+    "updated_at": "2026-01-01T00:00:00.000Z",
+    "ext": { "status": "撰写中" }
   },
   "entries": []
 }
 ```
 
-JSON 视图不含 `capabilities`、`members`、`revision`、修订列表、分享 token。讨论只含未删除项，字段为 `id` `type` `body` `parent_id` `anchor` `author` `created_at`。
+JSON 视图不含 `capabilities`、`members`、`revision`、修订列表、分享 token。频道有 `ext` 时带上 `ext`。讨论只含未删除项，字段为 `id` `type` `body` `parent_id` `anchor` `author` `created_at`。
 
-- 其它情况（含浏览器默认 Accept，以及 `*/*`）返回 `text/html; charset=utf-8`。页面包含频道标题、正文文本、每条讨论的文本。写入页面的任何文本（标题、正文、作者、文件名）必须转义，不能按原始 HTML 插入。样式为浅色。`input` 与 `button` 必须重置外观（`appearance: none`、边框、背景、字体），不能呈现系统控件。`scope=view` 的页面没有写讨论的表单。`scope=comment` 的页面有一个文本框和「发送」按钮，提交到 `POST /s/{token}/entries`。
+- 其它情况（含浏览器默认 Accept，以及 `*/*`）返回 `text/html; charset=utf-8`。页面包含频道标题、正文文本、每条讨论的文本；频道有 `ext` 时展示其键与值。写入页面的任何文本（标题、正文、作者、文件名、`ext` 的键与值）必须转义，不能按原始 HTML 插入。样式为浅色。`input` 与 `button` 必须重置外观（`appearance: none`、边框、背景、字体），不能呈现系统控件。`scope=view` 的页面没有写讨论的表单。`scope=comment` 的页面有一个文本框和「发送」按钮，提交到 `POST /s/{token}/entries`。
 
 `POST /s/{token}/entries` 请求体：
 
@@ -521,6 +544,7 @@ JSON 视图不含 `capabilities`、`members`、`revision`、修订列表、分�
       "id": "ch_task_copy",
       "type": "task",
       "title": "首页文案",
+      "ext": { "status": "撰写中" },
       "members": [
         { "id": "u_lin", "display_name": "林可", "role": "owner" }
       ],

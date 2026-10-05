@@ -18,6 +18,8 @@ export type Block =
   | { id: string; type: 'file'; file: FileMeta }
   | { id: string; type: 'embed'; embed: { url: string; title: string } };
 
+export type ExtValue = string | number | boolean;
+
 export type Channel = {
   id: string;
   type: string;
@@ -25,7 +27,7 @@ export type Channel = {
   body: Block[];
   capabilities: Capabilities;
   members: Member[];
-  ext?: Record<string, string>;
+  ext?: Record<string, ExtValue>;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -40,7 +42,7 @@ export type Entry = {
   parent_id: string | null;
   anchor: { block_id: string; quote?: string } | null;
   author: Actor;
-  ext?: Record<string, string>;
+  ext?: Record<string, ExtValue>;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -53,7 +55,7 @@ export type Link = {
   target_id?: string;
   target_url?: string;
   title?: string;
-  ext?: Record<string, string>;
+  ext?: Record<string, ExtValue>;
   created_at: string;
   deleted_at: string | null;
 };

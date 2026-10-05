@@ -43,6 +43,40 @@ export function isTypeName(s: string): boolean {
   return TYPE_RE.test(s);
 }
 
+export type ExtValue = string | number | boolean;
+
+export function parseExt(
+  value: unknown,
+): { ok: true; ext?: Record<string, ExtValue> } | { ok: false } {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return { ok: false };
+  const o = value as Record<string, unknown>;
+  const keys = Object.keys(o);
+  if (keys.length > 16) return { ok: false };
+  const out: Record<string, ExtValue> = {};
+  for (const k of keys) {
+    if (!isTypeName(k)) return { ok: false };
+    const v = o[k];
+    if (typeof v === 'boolean') {
+      out[k] = v;
+      continue;
+    }
+    if (typeof v === 'number') {
+      if (!Number.isFinite(v)) return { ok: false };
+      out[k] = v;
+      continue;
+    }
+    if (typeof v === 'string') {
+      const n = Array.from(v).length;
+      if (n < 1 || n > 256) return { ok: false };
+      out[k] = v;
+      continue;
+    }
+    return { ok: false };
+  }
+  if (keys.length === 0) return { ok: true };
+  return { ok: true, ext: out };
+}
+
 export function isResourceId(s: string): boolean {
   return ID_RE.test(s);
 }

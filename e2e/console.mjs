@@ -84,6 +84,7 @@ async function main() {
     await page.goto(base);
     await page.getByRole('button', { name: '发布小组' }).click();
     await page.getByRole('button', { name: '首页文案' }).click();
+    await page.getByText('撰写中').waitFor();
     await page.getByRole('button', { name: '接口草案' }).click();
     await page.getByText('链接把相关频道连起来').waitFor();
     const textarea = page.locator('#entry-text');
