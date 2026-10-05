@@ -104,6 +104,12 @@ class SdkPythonTest(unittest.TestCase):
         self.assertTrue(any(c["id"] == cid for c in filtered["data"]))
         miss = client.list_channels(filter='ext.artist eq "别人"')
         self.assertFalse(any(c["id"] == cid for c in miss["data"]))
+        anns = client.list_entries("ch_draft", filter='type eq "annotation"')
+        self.assertTrue(len(anns["data"]) > 0)
+        self.assertTrue(all(e["type"] == "annotation" for e in anns["data"]))
+        links = client.list_links("ch_draft", filter='title co "术语"')
+        self.assertEqual(len(links["data"]), 1)
+        self.assertEqual(links["data"][0]["title"], "术语表")
 
 
 if __name__ == "__main__":

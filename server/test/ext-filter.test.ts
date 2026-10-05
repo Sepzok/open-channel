@@ -1,6 +1,10 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { TASKS_CAPS, httpJson, startServer } from './helpers.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { ACTOR, TASKS_CAPS, httpJson, startServer, tempDataDir } from './helpers.js';
+import { importSeed } from '../src/seed.js';
+import { Store } from '../src/store.js';
 import { matchScimFilter, parseScimFilter } from '../src/scimFilter.js';
 
 function ids(body: unknown): string[] {
@@ -26,6 +30,11 @@ describe('SCIM filter parser', () => {
     assert.equal(parseScimFilter('x'.repeat(1025)).ok, false);
     assert.equal(parseScimFilter('(((((ext.status pr)))))').ok, false);
     assert.equal(parseScimFilter('((((ext.status pr))))').ok, true);
+  });
+
+  it('entry kind rejects title path', () => {
+    assert.equal(parseScimFilter('title eq "x"', 'entry').ok, false);
+    assert.equal(parseScimFilter('type eq "comment"', 'entry').ok, true);
   });
 });
 
@@ -161,5 +170,58 @@ describe('channel ext and list filter', () => {
     const json = await fetch(`${baseUrl}/s/${token}`, { headers: { Accept: 'application/json' } });
     const body = (await json.json()) as { channel: { ext: { artist: string } } };
     assert.equal(body.channel.ext.artist, '林可');
+  });
+
+  it('filters entries and rejects title path', async () => {
+    const a = await httpJson(baseUrl, 'POST', `/v1/channels/${lin}/entries`, {
+      body: { type: 'comment', body: [{ type: 'text', text: '公开评', format: 'plain' }], parent_id: null, anchor: null, ext: { status: '公开' } },
+    });
+    const b = await httpJson(baseUrl, 'POST', `/v1/channels/${lin}/entries`, {
+      body: { type: 'comment', body: [{ type: 'text', text: '草稿评', format: 'plain' }], parent_id: null, anchor: null, ext: { status: '草稿' } },
+    });
+    assert.equal(a.status, 201);
+    assert.equal(b.status, 201);
+    const q = new URLSearchParams({ filter: 'ext.status eq "公开"' });
+    const res = await httpJson(baseUrl, 'GET', `/v1/channels/${lin}/entries?${q.toString()}`);
+    const data = (res.body as { data: { id: string }[] }).data;
+    assert.deepEqual(data.map((e) => e.id), [(a.body as { id: string }).id]);
+    const bad = await httpJson(baseUrl, 'GET', `/v1/channels/${lin}/entries?${new URLSearchParams({ filter: 'title eq "x"' }).toString()}`);
+    assert.equal(bad.status, 400);
+  });
+
+  it('filters links by title', async () => {
+    await httpJson(baseUrl, 'POST', `/v1/channels/${lin}/links`, {
+      body: { type: 'related', target_id: zhou, title: '所属项目' },
+    });
+    await httpJson(baseUrl, 'POST', `/v1/channels/${lin}/links`, {
+      body: { type: 'related', target_id: none, title: '其它边' },
+    });
+    const q = new URLSearchParams({ filter: 'title co "所属"' });
+    const res = await httpJson(baseUrl, 'GET', `/v1/channels/${lin}/links?${q.toString()}`);
+    const titles = ((res.body as { data: { title?: string }[] }).data ?? []).map((l) => l.title);
+    assert.deepEqual(titles, ['所属项目']);
+  });
+});
+
+describe('seed ext validation', () => {
+  it('rejects illegal ext and does not write store.json', () => {
+    const dataDir = tempDataDir();
+    const store = new Store({
+      providerId: 'tasks',
+      providerName: '示例任务',
+      capabilities: TASKS_CAPS,
+      actor: ACTOR,
+      token: 'demo-token',
+      dataDir,
+      publicOrigin: 'http://127.0.0.1:0',
+    });
+    assert.throws(
+      () =>
+        importSeed(store, {
+          channels: [{ id: 'ch_bad', type: 'task', title: '坏种子', ext: { Artist: '林可' } }],
+        }),
+      /Invalid seed ext/,
+    );
+    assert.equal(fs.existsSync(path.join(dataDir, 'store.json')), false);
   });
 });

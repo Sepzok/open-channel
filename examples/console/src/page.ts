@@ -11,7 +11,10 @@ export function renderPage(): string {
   header { background: #fff; border-bottom: 1px solid #e2e5ea; padding: 12px 16px; }
   header h1 { margin: 0; font-size: 1.125rem; }
   .layout { display: grid; grid-template-columns: 280px 1fr; min-height: calc(100vh - 49px); }
-  aside { background: #fff; border-right: 1px solid #e2e5ea; overflow: auto; }
+  aside { background: #fff; border-right: 1px solid #e2e5ea; overflow: auto; display: flex; flex-direction: column; }
+  .list-filter { padding: 8px 12px; border-bottom: 1px solid #e2e5ea; flex-shrink: 0; }
+  .list-filter input { width: 100%; padding: 8px 10px; border: 1px solid #c5cad3; border-radius: 6px; background: #fff; appearance: none; font: inherit; }
+  #channel-list { overflow: auto; flex: 1; }
   main { background: #fff; margin: 12px; border-radius: 6px; border: 1px solid #e2e5ea; padding: 0 0 24px; }
   .channel-item { display: block; width: 100%; text-align: left; padding: 10px 12px; border: none; border-bottom: 1px solid #f0f1f3; background: #fff; cursor: pointer; appearance: none; font: inherit; }
   .channel-item:hover, .channel-item.active { background: #eef1f4; }
@@ -36,7 +39,10 @@ export function renderPage(): string {
 <body>
 <header><h1>融合台</h1></header>
 <div class="layout">
-  <aside id="channel-list"><div class="empty">加载中…</div></aside>
+  <aside>
+    <div class="list-filter"><input id="channel-filter" type="search" placeholder="筛选频道" aria-label="筛选频道"></div>
+    <div id="channel-list"><div class="empty">加载中…</div></div>
+  </aside>
   <main id="detail"><div class="empty">选择左侧频道</div></main>
 </div>
 <script>
@@ -46,7 +52,8 @@ let selected = null;
 let detail = null;
 
 async function loadChannels() {
-  const res = await fetch('/api/channels');
+  const q = (document.getElementById('channel-filter')?.value || '').trim();
+  const res = await fetch('/api/channels' + (q ? '?q=' + encodeURIComponent(q) : ''));
   const data = await res.json();
   channels = data.channels || [];
   renderList();
@@ -187,6 +194,9 @@ async function restoreRev(revId) {
 }
 
 loadChannels();
+document.getElementById('channel-filter').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') loadChannels();
+});
 </script>
 </body>
 </html>`;

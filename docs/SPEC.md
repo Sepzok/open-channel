@@ -223,9 +223,9 @@ HTTP 状态与下列 body 同时成立。`Content-Type: application/problem+json
 - `updated_since`：返回 `updated_at` 严格大于该时间的项（删除会更新 `updated_at`）
 - `include_deleted`：`true` 才包含已删除。默认 false
 - `order`：`updated`（默认，`updated_at` 降序）或 `created`（`created_at` 升序）
-- `filter`：可选。IETF SCIM（[RFC 7644 §3.4.2.2](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.2)）过滤表达式的子集。与 `type`、`updated_since`、`include_deleted` **AND**。缺省则不过滤 `ext`。v1 参考实现线性扫描频道数组，不做倒排索引。只用于频道列表，不用于讨论或链接列表。
+- `filter`：可选。IETF SCIM（[RFC 7644 §3.4.2.2](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.2)）过滤表达式的子集。与 `type`、`updated_since`、`include_deleted` **AND**。缺省则不加该表达式。v1 参考实现线性扫描，不做倒排索引。
 
-`filter` 属性路径仅允许 `id`、`type`、`title`、`ext.<key>`（`<key>` 为 type 语法）。其它路径 400 `validation_error`。
+`filter` 属性路径：频道为 `id`、`type`、`title`、`ext.<key>`；讨论为 `id`、`type`、`ext.<key>`；链接为 `id`、`type`、`title`、`ext.<key>`。`<key>` 为 type 语法。其它路径 400 `validation_error`。种子导入的 `ext` 与 HTTP 写入同一套校验，非法则导入失败、不落盘。
 
 算子（RFC 名）：
 
@@ -246,12 +246,13 @@ HTTP 状态与下列 body 同时成立。`Content-Type: application/problem+json
 
 示例：`GET /v1/channels?filter=ext.artist eq "林可" and ext.duration_ms gt 180000`
 
-讨论列表查询：`order` 为 `asc`（默认）或 `desc`，按 `created_at`；`parent_id` 若给出则只返回该父的直接子条（不含父条本身）。
+讨论列表查询：`order` 为 `asc`（默认）或 `desc`，按 `created_at`；`parent_id` 若给出则只返回该父的直接子条（不含父条本身）；`filter` 与上表同一套 SCIM 子集，与 `parent_id` / `include_deleted` **AND**。查询参数名 `ext.*` 同样 400。
 
 链接列表查询：
 
 - `direction` 为 `out`（默认）、`in`、`both`
 - `type`：可选，与第 2 节 type 语法相同。给出时只返回该关系类型。服务端必须过滤，不得只靠客户端筛全量
+- `filter`：同上，与 `direction` / `type` / `include_deleted` **AND**。无 `title` 的链接对 `title` 谓词视为缺键。查询参数名 `ext.*` 同样 400。
 
 `GET` 单个资源：已软删除仍返回该资源（带 `deleted_at`），以便同步。从未存在才是 `not_found`。
 

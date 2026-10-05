@@ -135,7 +135,7 @@ Python 用同名 snake_case。查询参数、路径、请求体与 SPEC 相同�
 9. 融合聚合函数：把其中一个 `baseUrl` 指到未监听的端口时，响应仍包含另外两个提供方的频道，失败来源带「不可用」状态，而不是整次请求失败。
 10. 融合台页面：三个种子标题「发布小组」「首页文案」「接口草案」都可见；打开「接口草案」能看见种子正文中的句子；发送一条讨论后该句出现在讨论区；创建分享后页面出现含 `/s/` 的 URL。用本机 Chrome 真实点击和输入（`locator.click` / `locator.fill` / `locator.press`），不用改 DOM value 冒充。
 11. 链接 `type`：对 `ch_proj`，`direction=in&type=parent` 含 `ch_task_copy` 与 `ch_task_img`；`type=blocks` 不含它们。对 `ch_draft`，`direction=out&type=references` 指向术语表。无 `type` 时出边条数与加过滤前一致。
-12. 自定义字段与 SCIM `filter`：schema 允许 `ext` 数字，嵌套对象与非法键名不通过。创建后 GET 仍为 number。`filter=ext.artist eq "林可"` 命中；AND / 同键 OR / 跨键括号 OR / `ne`（缺键不命中）/ `co` / `duration_ms gt` 按 SPEC。非法比较字面量、过长或过深 `filter`、查询参数名 `ext.*` 为 400。PATCH `ext: {}` 后 `eq` 与 `pr` 不命中。SDK `listChannels` / `list_channels` 把 `filter` 发到查询串，不得只在客户端筛。融合台打开「首页文案」可见「撰写中」。
+12. 自定义字段与 SCIM `filter`：schema 允许 `ext` 数字，嵌套对象与非法键名不通过。创建后 GET 仍为 number。`filter=ext.artist eq "林可"` 命中；AND / 同键 OR / 跨键括号 OR / `ne`（缺键不命中）/ `co` / `duration_ms gt` 按 SPEC。非法比较字面量、过长或过深 `filter`、查询参数名 `ext.*` 为 400。PATCH `ext: {}` 后 `eq` 与 `pr` 不命中。SDK 把 `filter` 发到查询串。讨论列表 `filter=type eq "comment"`、链接列表 `filter=title co "所属"` 在服务端过滤。非法种子 `ext` 导入失败且不写 `store.json`。融合台筛选「首页」走提供方 `title co`，可见「首页文案」、不见「发布小组」。打开「首页文案」可见「撰写中」。
 
 SDK 的 `resolveShare` 发送 `Accept: application/json`。
 
@@ -151,6 +151,7 @@ SDK 的 `resolveShare` 发送 `Accept: application/json`。
 - 修订只覆盖最新正文，旧 revision id 取不回
 - 分享只提供 JSON
 - 融合台使用写死的频道数组而不请求三个端口
+- 融合台筛选只在已拉回的列表上再筛，不把条件交给提供方 `filter`
 - SDK 方法不发 HTTP
 - 客户端在 API 请求体里指定 `author` 或 `id` 并被接受
 

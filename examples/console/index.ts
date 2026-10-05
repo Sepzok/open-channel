@@ -60,7 +60,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && url.pathname === '/api/channels') {
-      const data = await aggregateChannels(providers);
+      const data = await aggregateChannels(providers, { q: url.searchParams.get('q') ?? undefined });
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(data));
       return;

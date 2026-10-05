@@ -2,10 +2,12 @@ import { isTypeName } from './util.js';
 
 export type ExtValue = string | number | boolean;
 
+export type FilterKind = 'channel' | 'entry' | 'link';
+
 export type FilterTarget = {
   id: string;
   type: string;
-  title: string;
+  title?: string;
   ext?: Record<string, ExtValue>;
 };
 
@@ -31,8 +33,9 @@ function codePointLength(s: string): number {
   return Array.from(s).length;
 }
 
-function isAllowedPath(path: string): boolean {
-  if (path === 'id' || path === 'type' || path === 'title') return true;
+function isAllowedPath(path: string, kind: FilterKind): boolean {
+  if (path === 'id' || path === 'type') return true;
+  if (path === 'title') return kind === 'channel' || kind === 'link';
   if (!path.startsWith('ext.')) return false;
   const key = path.slice(4);
   return isTypeName(key);
@@ -40,12 +43,14 @@ function isAllowedPath(path: string): boolean {
 
 class Parser {
   readonly s: string;
+  readonly kind: FilterKind;
   i = 0;
   depth = 0;
   atoms = 0;
 
-  constructor(s: string) {
+  constructor(s: string, kind: FilterKind) {
     this.s = s;
+    this.kind = kind;
   }
 
   fail(message: string): never {
@@ -135,7 +140,7 @@ class Parser {
     if (!pathM) this.fail('expected attribute');
     const path = pathM[0]!;
     this.i += path.length;
-    if (!isAllowedPath(path)) this.fail(`unknown attribute ${path}`);
+    if (!isAllowedPath(path, this.kind)) this.fail(`unknown attribute ${path}`);
     this.skipWs();
     const w = this.peekWord();
     if (!w) this.fail('expected operator');
@@ -196,20 +201,44 @@ class Parser {
   }
 }
 
-export function parseScimFilter(input: string): ParseFilterResult {
+export function parseScimFilter(input: string, kind: FilterKind = 'channel'): ParseFilterResult {
   if (codePointLength(input) > MAX_FILTER_CP) return { ok: false, message: 'filter too long' };
   try {
-    const ast = new Parser(input).parse();
+    const ast = new Parser(input, kind).parse();
     return { ok: true, ast };
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : 'invalid filter' };
   }
 }
 
+export function parseListFilterQuery(
+  searchParams: URLSearchParams,
+  kind: FilterKind,
+): { ok: true; match?: (t: FilterTarget) => boolean } | { ok: false; path: string; message: string } {
+  for (const key of searchParams.keys()) {
+    if (key.startsWith('ext.')) return { ok: false, path: key, message: 'use filter' };
+  }
+  const filters = searchParams.getAll('filter');
+  if (filters.length > 1) return { ok: false, path: 'filter', message: 'duplicate' };
+  if (filters.length === 0) return { ok: true };
+  const parsed = parseScimFilter(filters[0]!, kind);
+  if (!parsed.ok) return { ok: false, path: 'filter', message: parsed.message };
+  const ast = parsed.ast;
+  return { ok: true, match: (t) => matchScimFilter(t, ast) };
+}
+
+export function scimContains(attr: string, needle: string): string {
+  const escaped = needle.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return `${attr} co "${escaped}"`;
+}
+
 function readAttr(ch: FilterTarget, path: string): { present: boolean; value?: ExtValue } {
   if (path === 'id') return { present: true, value: ch.id };
   if (path === 'type') return { present: true, value: ch.type };
-  if (path === 'title') return { present: true, value: ch.title };
+  if (path === 'title') {
+    if (ch.title === undefined) return { present: false };
+    return { present: true, value: ch.title };
+  }
   if (path.startsWith('ext.')) {
     const key = path.slice(4);
     if (!ch.ext || !Object.prototype.hasOwnProperty.call(ch.ext, key)) return { present: false };

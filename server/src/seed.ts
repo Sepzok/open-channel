@@ -2,10 +2,20 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { Block, Entry, Link, Seed, Store } from './types.js';
 import { createChannelRecord, updateChannelBody } from './store.js';
-import { genId, nowIso } from './util.js';
+import { nowIso, parseExt } from './util.js';
 
 export function importSeed(store: Store, seed: Seed): void {
   const actor = store.options.actor;
+
+  const requireExt = (raw: unknown, where: string) => {
+    if (raw === undefined) return undefined;
+    const er = parseExt(raw);
+    if (!er.ok) throw new Error(`Invalid seed ext at ${where}`);
+    return er.ext;
+  };
+  for (const ch of seed.channels ?? []) requireExt(ch.ext, `channels.${ch.id}`);
+  for (const en of seed.entries ?? []) requireExt(en.ext, `entries.${en.id}`);
+  for (const ln of seed.links ?? []) requireExt(ln.ext, `links.${ln.id}`);
 
   for (const f of seed.files ?? []) {
     const bytes = Buffer.from(f.text ?? '', 'utf8');
@@ -29,7 +39,7 @@ export function importSeed(store: Store, seed: Seed): void {
         title: ch.title,
         members: ch.members,
         body,
-        ext: ch.ext,
+        ext: requireExt(ch.ext, `channels.${ch.id}`),
       },
       actor,
       true,
@@ -57,7 +67,7 @@ export function importSeed(store: Store, seed: Seed): void {
       parent_id: en.parent_id ?? null,
       anchor: en.anchor ?? null,
       author: en.author ?? actor,
-      ext: en.ext,
+      ext: requireExt(en.ext, `entries.${en.id}`),
       created_at: ts,
       updated_at: ts,
       deleted_at: null,
@@ -75,7 +85,7 @@ export function importSeed(store: Store, seed: Seed): void {
       target_id: ln.target_id,
       target_url: ln.target_url,
       title: ln.title,
-      ext: ln.ext,
+      ext: requireExt(ln.ext, `links.${ln.id}`),
       created_at: ts,
       deleted_at: null,
     };

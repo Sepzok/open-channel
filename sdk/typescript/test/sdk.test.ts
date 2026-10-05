@@ -82,5 +82,11 @@ describe('TypeScript SDK', () => {
       miss.data.some((c) => c.id === id),
       false,
     );
+    const anns = (await client.listEntries('ch_draft', { filter: 'type eq "annotation"' })) as { data: { type: string }[] };
+    assert.ok(anns.data.length > 0);
+    assert.ok(anns.data.every((e) => e.type === 'annotation'));
+    const links = (await client.listLinks('ch_draft', { filter: 'title co "术语"' })) as { data: { title?: string }[] };
+    assert.equal(links.data.length, 1);
+    assert.equal(links.data[0]?.title, '术语表');
   });
 });

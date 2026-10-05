@@ -1,3 +1,5 @@
+import { scimContains } from '../../../server/src/scimFilter.js';
+
 export type ProviderConfig = {
   id: string;
   name: string;
@@ -21,9 +23,15 @@ export type AggregatedChannels = {
   channels: ChannelRow[];
 };
 
-async function fetchJson(url: string, token: string): Promise<{ ok: true; data: unknown } | { ok: false }> {
+async function fetchJson(
+  url: string,
+  token: string,
+  filter?: string,
+): Promise<{ ok: true; data: unknown } | { ok: false }> {
   try {
-    const res = await fetch(`${url.replace(/\/$/, '')}/v1/channels`, {
+    const u = new URL(`${url.replace(/\/$/, '')}/v1/channels`);
+    if (filter) u.searchParams.set('filter', filter);
+    const res = await fetch(u, {
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.ocp+json' },
     });
     if (!res.ok) return { ok: false };
@@ -34,10 +42,15 @@ async function fetchJson(url: string, token: string): Promise<{ ok: true; data: 
   }
 }
 
-export async function aggregateChannels(providers: ProviderConfig[]): Promise<AggregatedChannels> {
+export async function aggregateChannels(
+  providers: ProviderConfig[],
+  opts?: { q?: string },
+): Promise<AggregatedChannels> {
+  const q = opts?.q?.trim() ?? '';
+  const filter = q ? scimContains('title', q) : undefined;
   const channels: ChannelRow[] = [];
   for (const p of providers) {
-    const result = await fetchJson(p.baseUrl, p.token);
+    const result = await fetchJson(p.baseUrl, p.token, filter);
     if (!result.ok) {
       channels.push({
         providerId: p.id,

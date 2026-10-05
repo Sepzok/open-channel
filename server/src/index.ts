@@ -25,7 +25,7 @@ import {
   wantsShareJson,
 } from './util.js';
 import { sharePageHtml } from './html.js';
-import { matchScimFilter, parseScimFilter } from './scimFilter.js';
+import { parseListFilterQuery } from './scimFilter.js';
 import type { FileMeta } from './types.js';
 
 type IdempotencyRecord = { hash: string; status: number; body: string };
@@ -271,7 +271,13 @@ export function createApp(options: AppOptions): http.Server {
   }
 
   const server = http.createServer(async (req, res) => {
-    await ready;
+    try {
+      await ready;
+    } catch {
+      res.writeHead(500, { 'Content-Type': PROBLEM_JSON });
+      res.end(JSON.stringify(problem('validation_error')));
+      return;
+    }
     if (!checkVersion(req, res)) return;
 
     const url = new URL(req.url ?? '/', `http://${req.headers.host ?? '127.0.0.1'}`);
@@ -483,26 +489,10 @@ export function createApp(options: AppOptions): http.Server {
           sendProblem(res, 'validation_error', { errors: [{ path: 'limit', message: 'max 100' }] });
           return;
         }
-        for (const key of url.searchParams.keys()) {
-          if (key.startsWith('ext.')) {
-            sendProblem(res, 'validation_error', { errors: [{ path: key, message: 'use filter' }] });
-            return;
-          }
-        }
-        const filters = url.searchParams.getAll('filter');
-        if (filters.length > 1) {
-          sendProblem(res, 'validation_error', { errors: [{ path: 'filter', message: 'duplicate' }] });
+        const parsedFilter = parseListFilterQuery(url.searchParams, 'channel');
+        if (!parsedFilter.ok) {
+          sendProblem(res, 'validation_error', { errors: [{ path: parsedFilter.path, message: parsedFilter.message }] });
           return;
-        }
-        let match: ((ch: { id: string; type: string; title: string; ext?: Record<string, string | number | boolean> }) => boolean) | undefined;
-        if (filters.length === 1) {
-          const parsed = parseScimFilter(filters[0]!);
-          if (!parsed.ok) {
-            sendProblem(res, 'validation_error', { errors: [{ path: 'filter', message: parsed.message }] });
-            return;
-          }
-          const ast = parsed.ast;
-          match = (ch) => matchScimFilter(ch, ast);
         }
         const result = store.listChannels({
           type: url.searchParams.get('type') ?? undefined,
@@ -511,7 +501,7 @@ export function createApp(options: AppOptions): http.Server {
           order: (url.searchParams.get('order') as 'updated' | 'created') ?? 'updated',
           limit,
           cursor: url.searchParams.get('cursor') ?? undefined,
-          match,
+          match: parsedFilter.match,
         });
         sendJson(res, 200, result);
         return;
@@ -682,6 +672,11 @@ export function createApp(options: AppOptions): http.Server {
           return;
         }
         if (method === 'GET') {
+          const parsedFilter = parseListFilterQuery(url.searchParams, 'entry');
+          if (!parsedFilter.ok) {
+            sendProblem(res, 'validation_error', { errors: [{ path: parsedFilter.path, message: parsedFilter.message }] });
+            return;
+          }
           const includeDeleted = url.searchParams.get('include_deleted') === 'true';
           let items = Object.values(store.data.entries).filter((e) => e.channel_id === chId);
           if (!includeDeleted) items = items.filter((e) => e.deleted_at === null);
@@ -689,6 +684,7 @@ export function createApp(options: AppOptions): http.Server {
           if (url.searchParams.has('parent_id')) {
             items = items.filter((e) => e.parent_id === parentId);
           }
+          if (parsedFilter.match) items = items.filter(parsedFilter.match);
           const order = url.searchParams.get('order') === 'desc' ? 'desc' : 'asc';
           items.sort((a, b) => {
             const cmp = a.created_at.localeCompare(b.created_at);
@@ -810,6 +806,11 @@ export function createApp(options: AppOptions): http.Server {
           return;
         }
         if (method === 'GET') {
+          const parsedFilter = parseListFilterQuery(url.searchParams, 'link');
+          if (!parsedFilter.ok) {
+            sendProblem(res, 'validation_error', { errors: [{ path: parsedFilter.path, message: parsedFilter.message }] });
+            return;
+          }
           const direction = url.searchParams.get('direction') ?? 'out';
           const includeDeleted = url.searchParams.get('include_deleted') === 'true';
           let items = Object.values(store.data.links);
@@ -829,6 +830,7 @@ export function createApp(options: AppOptions): http.Server {
             }
             items = items.filter((l) => l.type === typeFilter);
           }
+          if (parsedFilter.match) items = items.filter(parsedFilter.match);
           items.sort((a, b) => a.id.localeCompare(b.id));
           const limitRaw = url.searchParams.get('limit');
           let limit = limitRaw ? parseInt(limitRaw, 10) : 50;
