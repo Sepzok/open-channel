@@ -12,7 +12,9 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  # Under degraded Actions, cancel-in-progress kills the only queued run when
+  # another dispatch arrives. Prefer one slow publish over perpetual cancel.
+  cancel-in-progress: false
 
 jobs:
   build:
