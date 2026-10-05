@@ -25,7 +25,7 @@ OCP 只描述 HTTP 上的文档资源。对局状态不进频道正文、讨论�
 
 源码以 MIT 公开。不执行 `npm publish`，不向 PyPI 上传。根 `package.json` 为 `private: true`。
 
-**不提供公网 OCP API / 长期服务进程。** 允许 GitHub Pages 上的静态演示：状态只在访问者浏览器内，用迷你 runtime 承接会话与发帖；不是可被外人当 API 用的公网提供方。本地生成与发布：`npm run pages:build`、`npm run pages:deploy`（推 `gh-pages`）。
+**不提供公网 OCP API / 长期服务进程。** 允许 GitHub Pages 上的静态演示：状态只在访问者浏览器内，用迷你 runtime 承接会话与发帖；不是可被外人当 API 用的公网提供方。本地生成与发布：`npm run pages:build`、`npm run pages:deploy`（镜像 `gh-pages` 并触发 Pages workflow）。
 
 GitHub 上本仓属 `Sepzok`：提交身份用 `Sepzok <dev@sepzok.com>`，Contributors 不得出现其他 GitHub 用户，不要写 `Co-authored-by: Cursor`。跨仓细则见用户级 `sepzok-github-identity.mdc`。
 

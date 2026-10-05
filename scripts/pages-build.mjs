@@ -27,6 +27,10 @@ function rimraf(dir) {
 }
 
 function write(file, contents) {
+  // Legacy GitHub Pages may still parse Liquid even with .nojekyll in some failure modes.
+  if (/\{\{|\{%/.test(contents)) {
+    throw new Error(`Pages output must not contain Liquid markers: ${file}`);
+  }
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, contents);
 }

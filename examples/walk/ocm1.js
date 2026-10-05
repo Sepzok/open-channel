@@ -4,7 +4,12 @@ const KIND = { join: 0, input: 1, event: 2, snapshot: 3 };
 const KIND_NAME = ['join', 'input', 'event', 'snapshot'];
 
 /**
- * @param {{ kind: string, seq: number, channelId: string, actorId: string, payload: Uint8Array }} frame
+ * @param {object} frame
+ * @param {string} frame.kind
+ * @param {number} frame.seq
+ * @param {string} frame.channelId
+ * @param {string} frame.actorId
+ * @param {Uint8Array} frame.payload
  * @returns {Uint8Array}
  */
 export function encodeOcm1(frame) {

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Build site/ and force-push to origin gh-pages (Sepzok Pages source).
- * Prefer this over Actions when runners are queued; requires GITHUB_TOKEN / GH_TOKEN.
+ * Build site/, mirror to gh-pages, then trigger the pages Actions workflow.
+ * GitHub Pages publish uses build_type=workflow (deploy-pages). Requires gh + GH_TOKEN.
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -49,4 +49,15 @@ const push = spawnSync('git', ['-c', 'credential.helper=', 'push', '--force', ur
 if (push.stderr) process.stderr.write(String(push.stderr).replaceAll(token, '[redacted]'));
 if (push.status !== 0) process.exit(push.status || 1);
 fs.rmSync(td, { recursive: true, force: true });
-console.log('Pushed gh-pages. Source: branch gh-pages /. URL: https://sepzok.github.io/open-channel/');
+console.log('Pushed gh-pages mirror. Pages publish uses Actions (workflow).');
+
+const dispatch = spawnSync(
+  'gh',
+  ['workflow', 'run', 'pages.yml', '--repo', 'Sepzok/open-channel'],
+  { env: { ...process.env, GH_TOKEN: token, GITHUB_TOKEN: token }, encoding: 'utf8' },
+);
+if (dispatch.status !== 0) {
+  process.stderr.write(String(dispatch.stderr || dispatch.stdout || 'workflow dispatch failed\n'));
+  process.exit(dispatch.status || 1);
+}
+console.log('Triggered pages workflow. URL: https://sepzok.github.io/open-channel/');
