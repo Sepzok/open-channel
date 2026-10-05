@@ -1,6 +1,6 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { aggregateChannels } from '../src/aggregate.js';
+import { aggregateChannels, annotateLink, associateLinkBody } from '../src/aggregate.js';
 import { CHAT_CAPS, NOTES_CAPS, loadSeed, startServer } from '../../../server/test/helpers.js';
 
 describe('aggregateChannels', () => {
@@ -59,5 +59,40 @@ describe('aggregateChannels', () => {
     assert.equal(titles.includes('发布小组'), false);
     const tasksRow = result.channels.find((c) => c.providerId === 'tasks' && !c.providerAvailable);
     assert.ok(tasksRow);
+  });
+
+  it('builds target_url for another provider and target_id for the same', () => {
+    const notes = { id: 'notes', name: '示例笔记', baseUrl: notesUrl, token: 'demo-token' };
+    const tasks = { id: 'tasks', name: '示例任务', baseUrl: 'http://127.0.0.1:8782', token: 'demo-token' };
+    const cross = associateLinkBody(notes, tasks, 'ch_proj', '首页文案');
+    assert.equal(cross.target_id, undefined);
+    assert.equal(cross.target_url, 'http://127.0.0.1:8782/v1/channels/ch_proj');
+    const same = associateLinkBody(notes, notes, 'ch_glossary', '术语表');
+    assert.equal(same.target_id, 'ch_glossary');
+    assert.equal(same.target_url, undefined);
+    const annotated = annotateLink(
+      [notes, tasks],
+      {
+        id: 'ln_x',
+        type: 'references',
+        source_id: 'ch_draft',
+        target_url: cross.target_url,
+        title: '首页文案',
+      },
+      'notes',
+    );
+    assert.deepEqual(annotated.resolved, { providerId: 'tasks', channelId: 'ch_proj' });
+    const external = annotateLink(
+      [notes, tasks],
+      {
+        id: 'ln_e',
+        type: 'references',
+        source_id: 'ch_draft',
+        target_url: 'https://example.com/spec',
+        title: '外部',
+      },
+      'notes',
+    );
+    assert.equal(external.resolved, null);
   });
 });

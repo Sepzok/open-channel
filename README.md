@@ -49,7 +49,11 @@ npm run test:e2e
 
 ## 包结构
 
-- `@open-channel/server` — 参考服务端 `createApp(options)`
-- `@open-channel/sdk` — TypeScript 客户端
+- `@open-channel/server` — 参考服务端 `createApp(options)`（可选用；第三方不必依赖它）
+- `@open-channel/sdk` — TypeScript 客户端（单 origin；跨提供方用多个 `Client` + `target_url`）
 - `sdk/python/openchannel` — Python 客户端（标准库 `urllib`）
-- `examples/*` — 三个提供方与融合台
+- `examples/chat|tasks|notes` — 三个参考提供方
+- `examples/native` — 不引用 `createApp` 的工单适配（第三方服务端起点）
+- `examples/console` — 融合台：多 origin 汇合，并把各方频道用链接关联
+
+把已有产品暴露为 OCP、以及客户端如何对接多个服务端，见 `docs/ADAPT.md`。

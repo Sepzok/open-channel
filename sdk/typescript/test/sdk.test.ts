@@ -93,5 +93,11 @@ describe('TypeScript SDK', () => {
     const lin = new Client({ baseUrl, token: (session.data as { token: string }).token });
     const asLin = (await lin.listChannels()) as { data: { title: string }[] };
     assert.ok(asLin.data.some((c) => c.title === '接口草案'));
+
+    const disco = (await client.getDiscovery({ anonymous: true })) as { protocol: string; actor: { id: string } };
+    assert.equal(disco.protocol, 'ocp');
+    assert.equal(disco.actor.id, 'u_fuse');
+    const accounts = (await client.listAccounts()) as { data: { id: string }[] };
+    assert.ok(accounts.data.some((a) => a.id === 'u_lin'));
   });
 });

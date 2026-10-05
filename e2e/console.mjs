@@ -101,6 +101,15 @@ async function main() {
     await page.locator('#entries .entry').filter({ hasText: 'E2E 讨论验收句' }).waitFor();
     await page.getByRole('button', { name: '创建分享' }).click();
     await page.locator('.share-url').getByText(/\/s\//).waitFor();
+    await page.getByRole('button', { name: '接口草案' }).click();
+    await page.getByRole('button', { name: '关联' }).click();
+    await page.locator('#associate-panel').getByRole('button', { name: '首页文案' }).click();
+    await page.locator('#detail').getByRole('button', { name: '首页文案' }).waitFor();
+    await page.reload();
+    await page.getByRole('button', { name: '接口草案' }).click();
+    await page.locator('#detail').getByRole('button', { name: '首页文案' }).waitFor();
+    await page.locator('#detail').getByRole('button', { name: '首页文案' }).click();
+    await page.getByText('撰写中').waitFor();
     console.log('e2e: ok');
   } finally {
     await browser.close();

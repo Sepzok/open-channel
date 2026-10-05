@@ -86,6 +86,16 @@ export function isResourceId(s: string): boolean {
   return ID_RE.test(s);
 }
 
+export function isAbsoluteHttpUrl(s: string): boolean {
+  if (typeof s !== 'string' || !/^https?:\/\/\S+$/.test(s)) return false;
+  try {
+    const u = new URL(s);
+    return (u.protocol === 'http:' || u.protocol === 'https:') && Boolean(u.host);
+  } catch {
+    return false;
+  }
+}
+
 export function parseJsonBody(raw: string): { ok: true; value: unknown } | { ok: false; message: string } {
   if (!raw) return { ok: false, message: 'Empty body' };
   try {

@@ -13,6 +13,7 @@ import {
   genId,
   genShareToken,
   isActorId,
+  isAbsoluteHttpUrl,
   isResourceId,
   isTypeName,
   nowIso,
@@ -1129,6 +1130,9 @@ export function createApp(options: AppOptions): http.Server {
               if (!target || target.deleted_at) {
                 return { status: 400, body: problem('validation_error') };
               }
+            }
+            if (hasUrl && (typeof o.target_url !== 'string' || !isAbsoluteHttpUrl(o.target_url))) {
+              return { status: 400, body: problem('validation_error') };
             }
             let linkExt;
             if (o.ext !== undefined) {

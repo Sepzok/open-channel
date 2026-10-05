@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
-import { aggregateChannels, entryTypeForChannel, type ProviderConfig } from './src/aggregate.js';
+import { aggregateChannels, annotateLink, associateLinkBody, entryTypeForChannel, type ProviderConfig } from './src/aggregate.js';
 import { renderPage } from './src/page.js';
 import { bindHost, originAfterListen } from '@open-channel/server';
 
@@ -83,18 +83,28 @@ const server = http.createServer(async (req, res) => {
       let linksInParent: { data: unknown[] } | null = null;
       if (caps.links) {
         const inbound = await proxyJson(p, `/v1/channels/${channelId}/links?direction=in&type=parent`);
-        const rows = ((inbound.body as { data?: { source_id: string; type: string; title?: string }[] })?.data ??
-          []) as { source_id: string; type: string; title?: string }[];
+        const rows = ((inbound.body as { data?: { id: string; source_id: string; type: string; title?: string }[] })?.data ??
+          []) as { id: string; source_id: string; type: string; title?: string }[];
         const labeled = [];
         for (const l of rows) {
           const src = await proxyJson(p, `/v1/channels/${l.source_id}`);
           labeled.push({
             ...l,
             label: (src.body as { title?: string })?.title ?? l.source_id,
+            resolved: { providerId: p.id, channelId: l.source_id },
           });
         }
         linksInParent = { data: labeled };
       }
+      const outLinks = caps.links
+        ? {
+            data: (
+              ((linksRes?.body as { data?: Parameters<typeof annotateLink>[1][] })?.data ?? []) as Parameters<
+                typeof annotateLink
+              >[1][]
+            ).map((l) => annotateLink(providers, l, p.id)),
+          }
+        : null;
       const revisionsRes = caps.revisions ? await proxyJson(p, `/v1/channels/${channelId}/revisions`) : null;
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(
@@ -102,7 +112,7 @@ const server = http.createServer(async (req, res) => {
           capabilities: caps,
           channel: channelRes.body,
           entries: entriesRes?.body ?? null,
-          links: linksRes?.body ?? null,
+          links: outLinks,
           linksInParent,
           revisions: revisionsRes?.body ?? null,
         }),
@@ -125,6 +135,34 @@ const server = http.createServer(async (req, res) => {
         anchor: null,
       };
       const created = await proxyJson(p!, `/v1/channels/${channelId}/entries`, 'POST', body);
+      res.writeHead(created.status, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(created.body));
+      return;
+    }
+
+    const linkPost = url.pathname.match(/^\/api\/channels\/([^/]+)\/([^/]+)\/links$/);
+    if (linkPost && req.method === 'POST') {
+      const source = providerById(linkPost[1]!);
+      const channelId = linkPost[2]!;
+      if (!source) {
+        res.writeHead(404);
+        res.end('{}');
+        return;
+      }
+      const raw = await readBody(req);
+      const body = JSON.parse(raw) as { providerId?: string; channelId?: string; title?: string };
+      const target = body.providerId ? providerById(body.providerId) : undefined;
+      if (!target || !body.channelId || !body.title) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ code: 'validation_error' }));
+        return;
+      }
+      const created = await proxyJson(
+        source,
+        `/v1/channels/${channelId}/links`,
+        'POST',
+        associateLinkBody(source, target, body.channelId, body.title),
+      );
       res.writeHead(created.status, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(created.body));
       return;

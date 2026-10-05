@@ -30,7 +30,10 @@ export function renderPage(): string {
   button, .btn { appearance: none; font: inherit; border-radius: 6px; padding: 8px 14px; border: 1px solid #1d4e89; background: #1d4e89; color: #fff; cursor: pointer; }
   button.secondary { background: #fff; color: #1d4e89; }
   .link-row { padding: 4px 0; font-size: 0.875rem; }
+  .link-nav { appearance: none; font: inherit; background: none; border: none; color: #1d4e89; cursor: pointer; padding: 0; text-align: left; }
   .link-group { font-size: 0.75rem; color: #5c6370; margin: 8px 0 4px; }
+  #associate-panel { margin-top: 12px; border-top: 1px solid #f0f1f3; padding-top: 8px; }
+  #associate-panel .channel-item { border: 1px solid #e2e5ea; margin-bottom: 4px; border-radius: 6px; }
   .empty { color: #8b919a; padding: 24px 16px; }
   .share-url { word-break: break-all; margin-top: 8px; font-size: 0.875rem; }
   .rev-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-top: 1px solid #f0f1f3; font-size: 0.875rem; }
@@ -137,18 +140,28 @@ function renderDetail() {
     const hasAny = parents.length || children.length || others.length;
     html += '<div class="section-band">链接</div><div class="section-body">';
     if (!hasAny) html += '<div class="empty">暂无链接</div>';
-    function rows(items, pick) {
-      return items.map((l) => '<div class="link-row">' + escapeHtml(pick(l)) + '</div>').join('');
+    function linkRow(l, fallback) {
+      const text = escapeHtml(fallback(l));
+      if (l.resolved && l.resolved.providerId && l.resolved.channelId) {
+        return '<div class="link-row"><button type="button" class="link-nav" data-provider="' +
+          escapeHtml(l.resolved.providerId) + '" data-id="' + escapeHtml(l.resolved.channelId) + '">' + text + '</button></div>';
+      }
+      if (l.target_url) {
+        return '<div class="link-row">' + escapeHtml(l.title || l.target_url) + '</div>';
+      }
+      return '<div class="link-row">' + text + '</div>';
     }
     if (parents.length) {
-      html += '<div class="link-group">上级</div>' + rows(parents, (l) => l.title || l.target_id || l.type);
+      html += '<div class="link-group">上级</div>' + parents.map((l) => linkRow(l, (x) => x.title || x.target_id || x.type)).join('');
     }
     if (children.length) {
-      html += '<div class="link-group">下级</div>' + rows(children, (l) => l.label || l.title || l.source_id);
+      html += '<div class="link-group">下级</div>' + children.map((l) => linkRow(l, (x) => x.label || x.title || x.source_id)).join('');
     }
     if (others.length) {
-      html += '<div class="link-group">其它</div>' + rows(others, (l) => l.title || l.type);
+      html += '<div class="link-group">其它</div>' + others.map((l) => linkRow(l, (x) => x.title || x.type)).join('');
     }
+    html += '<button type="button" class="secondary" id="associate-open">关联</button>';
+    html += '<div id="associate-panel" hidden></div>';
     html += '</div>';
   }
   if (caps.revisions && detail.revisions) {
@@ -164,6 +177,10 @@ function renderDetail() {
   el.innerHTML = html;
   document.getElementById('send-entry')?.addEventListener('click', sendEntry);
   document.getElementById('create-share')?.addEventListener('click', createShare);
+  document.getElementById('associate-open')?.addEventListener('click', openAssociate);
+  document.querySelectorAll('.link-nav').forEach((btn) => {
+    btn.addEventListener('click', () => openChannel(btn.dataset.provider, btn.dataset.id));
+  });
   document.querySelectorAll('.restore-rev').forEach((btn) => {
     btn.addEventListener('click', () => restoreRev(btn.dataset.rev));
   });
@@ -178,6 +195,37 @@ async function sendEntry() {
     body: JSON.stringify({ text }),
   });
   await openChannel(selected.providerId, selected.channelId);
+}
+
+async function associateTo(providerId, channelId, title) {
+  if (!selected) return;
+  await fetch('/api/channels/' + selected.providerId + '/' + selected.channelId + '/links', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ providerId, channelId, title }),
+  });
+  await openChannel(selected.providerId, selected.channelId);
+}
+
+function openAssociate() {
+  const panel = document.getElementById('associate-panel');
+  if (!panel || !selected) return;
+  const choices = channels.filter((row) => row.providerAvailable && !(row.providerId === selected.providerId && row.channel.id === selected.channelId));
+  if (!choices.length) {
+    panel.hidden = false;
+    panel.innerHTML = '<div class="empty">没有可关联的频道</div>';
+    return;
+  }
+  panel.hidden = false;
+  panel.innerHTML = choices.map((row) => {
+    const label = TYPE_LABELS[row.channel.type] || row.channel.type;
+    return '<button type="button" class="channel-item" data-provider="' + row.providerId + '" data-id="' + row.channel.id + '" data-title="' + encodeURIComponent(row.channel.title) + '">' +
+      '<div>' + escapeHtml(row.channel.title) + '</div>' +
+      '<div class="channel-meta">' + escapeHtml(row.providerName) + ' · ' + label + '</div></button>';
+  }).join('');
+  panel.querySelectorAll('.channel-item').forEach((btn) => {
+    btn.addEventListener('click', () => associateTo(btn.dataset.provider, btn.dataset.id, decodeURIComponent(btn.dataset.title)));
+  });
 }
 
 async function createShare() {

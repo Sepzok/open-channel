@@ -89,6 +89,14 @@ v1 一个提供方的全部频道使用同一份能力。客户端不能在创�
 
 `target_id` 必须是本提供方未删除的频道，否则 400 `validation_error`。
 
+`target_url` 必须是绝对 `http` 或 `https` URL（含主机，禁止相对路径），否则 400 `validation_error`。
+
+**频道资源 URL**（跨提供方关联用这个，不用 `target_id`）：
+
+`{origin}/v1/channels/{id}`
+
+`origin` 是调用方已配置的该提供方根（scheme + host + 端口，无尾斜杠），`id` 为频道 id。查询串与 fragment 都不属于资源 URL。对方进程里的频道不能写进本提供方的 `target_id`。写成 `type` 为 `references`（或其它网络关系）且 `target_url` 为上述 URL 的链接。`target_url` 边没有入边：对方提供方不会自动出现反向记录。客户端用自己的提供方清单匹配 `origin`；匹配到则打开该提供方的该频道，匹配不到则当普通外链。解析规则见 SDK `parseChannelResourceUrl`。
+
 不设第二套 hierarchy 资源，也不在频道上挂 `parent_id`。层级与网络都用链接：
 
 - **层级**：边从子频道指出，`type` 为 `parent`，`target_id` 为父频道。列子项：对父频道 `GET .../links?direction=in&type=parent`。同一约定用于项目←任务、曲库←单曲、笔记本←单篇。
@@ -396,6 +404,8 @@ HTTP 状态与下列 body 同时成立。`Content-Type: application/problem+json
 ```
 
 或 `{ "type": "references", "target_url": "https://example.com/spec", "title": "外部" }`。
+
+跨提供方关联示例：`{ "type": "references", "target_url": "http://127.0.0.1:8782/v1/channels/ch_proj", "title": "首页文案" }`。这不是本提供方的 `target_id`。
 
 无 `links` 能力：`capability_unsupported`。
 

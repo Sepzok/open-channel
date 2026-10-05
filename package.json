@@ -16,6 +16,7 @@
     "dev:chat": "tsx examples/chat/index.ts",
     "dev:tasks": "tsx examples/tasks/index.ts",
     "dev:notes": "tsx examples/notes/index.ts",
+    "dev:native": "tsx examples/native/index.ts",
     "dev:console": "tsx examples/console/index.ts",
     "dev": "node scripts/dev-all.mjs"
   },

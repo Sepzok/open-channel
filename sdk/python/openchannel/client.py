@@ -3,10 +3,58 @@
 from __future__ import annotations
 
 import json
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Any, Mapping, MutableMapping, Optional
+from typing import Any, Mapping, MutableMapping, Optional, Sequence
+
+CHANNEL_ID_RE = re.compile(r"^ch_[a-z0-9_]{1,40}$")
+
+
+def channel_resource_url(base_url: str, channel_id: str) -> str:
+    origin = urllib.parse.urlparse(base_url)
+    if not origin.scheme or not origin.netloc:
+        raise ValueError("base_url must be absolute")
+    return f"{origin.scheme}://{origin.netloc}/v1/channels/{channel_id}"
+
+
+def parse_channel_resource_url(url: str) -> Optional[dict[str, str]]:
+    try:
+        parsed = urllib.parse.urlparse(url)
+    except ValueError:
+        return None
+    if parsed.scheme not in ("http", "https"):
+        return None
+    if parsed.query or parsed.fragment:
+        return None
+    parts = parsed.path.split("/")
+    if len(parts) != 4 or parts[1] != "v1" or parts[2] != "channels":
+        return None
+    channel_id = parts[3]
+    if not CHANNEL_ID_RE.match(channel_id):
+        return None
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    return {"origin": origin, "channel_id": channel_id}
+
+
+def match_provider(providers: Sequence[Mapping[str, str]], url: str) -> Optional[dict[str, str]]:
+    parsed = parse_channel_resource_url(url)
+    if not parsed:
+        return None
+    for p in providers:
+        base = p.get("baseUrl") or p.get("base_url")
+        pid = p.get("id")
+        if not base or not pid:
+            continue
+        try:
+            b = urllib.parse.urlparse(base)
+        except ValueError:
+            continue
+        origin = f"{b.scheme}://{b.netloc}"
+        if origin == parsed["origin"]:
+            return {"provider_id": pid, "channel_id": parsed["channel_id"]}
+    return None
 
 
 class OcpError(Exception):
@@ -86,6 +134,18 @@ class Client:
             body={"id": account_id, "password": password},
             anonymous=True,
         )
+        return data
+
+    def delete_session(self, session_id: str) -> Any:
+        _, data = self._request("DELETE", f"/v1/sessions/{session_id}")
+        return data
+
+    def get_discovery(self, *, anonymous: bool = False) -> Any:
+        _, data = self._request("GET", "/v1", anonymous=anonymous)
+        return data
+
+    def list_accounts(self, **query: Any) -> Any:
+        _, data = self._request("GET", "/v1/accounts", query=query)
         return data
 
     def create_account(self, body: Mapping[str, Any]) -> tuple[int, Any]:

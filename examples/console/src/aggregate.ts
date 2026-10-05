@@ -1,4 +1,5 @@
 import { scimContains } from '../../../server/src/scimFilter.js';
+import { channelResourceUrl, matchProvider } from '@open-channel/sdk';
 
 export type ProviderConfig = {
   id: string;
@@ -71,6 +72,58 @@ export async function aggregateChannels(
     }
   }
   return { channels };
+}
+
+export type LinkRow = {
+  id: string;
+  type: string;
+  source_id: string;
+  target_id?: string;
+  target_url?: string;
+  title?: string;
+  label?: string;
+  resolved: { providerId: string; channelId: string } | null;
+};
+
+export function annotateLink(
+  providers: ProviderConfig[],
+  link: {
+    id: string;
+    type: string;
+    source_id: string;
+    target_id?: string;
+    target_url?: string;
+    title?: string;
+    label?: string;
+  },
+  sourceProviderId: string,
+): LinkRow {
+  if (link.target_id) {
+    return {
+      ...link,
+      resolved: { providerId: sourceProviderId, channelId: link.target_id },
+    };
+  }
+  if (link.target_url) {
+    return { ...link, resolved: matchProvider(providers, link.target_url) };
+  }
+  return { ...link, resolved: null };
+}
+
+export function associateLinkBody(
+  source: ProviderConfig,
+  target: ProviderConfig,
+  channelId: string,
+  title: string,
+): { type: string; title: string; target_id?: string; target_url?: string } {
+  if (source.id === target.id) {
+    return { type: 'references', title, target_id: channelId };
+  }
+  return {
+    type: 'references',
+    title,
+    target_url: channelResourceUrl(target.baseUrl, channelId),
+  };
 }
 
 export function entryTypeForChannel(channelType: string): string {

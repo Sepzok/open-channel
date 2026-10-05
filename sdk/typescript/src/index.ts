@@ -14,6 +14,48 @@ export class OcpError extends Error {
 
 export type ClientOptions = { baseUrl: string; token: string };
 
+export type ProviderRef = { id: string; baseUrl: string };
+
+const CHANNEL_ID_RE = /^ch_[a-z0-9_]{1,40}$/;
+
+export function channelResourceUrl(baseUrl: string, channelId: string): string {
+  const origin = new URL(baseUrl).origin;
+  return `${origin}/v1/channels/${channelId}`;
+}
+
+export function parseChannelResourceUrl(url: string): { origin: string; channelId: string } | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+  if (parsed.search || parsed.hash) return null;
+  const m = parsed.pathname.match(/^\/v1\/channels\/([^/]+)$/);
+  if (!m) return null;
+  const channelId = m[1]!;
+  if (!CHANNEL_ID_RE.test(channelId)) return null;
+  return { origin: parsed.origin, channelId };
+}
+
+export function matchProvider(
+  providers: ProviderRef[],
+  url: string,
+): { providerId: string; channelId: string } | null {
+  const parsed = parseChannelResourceUrl(url);
+  if (!parsed) return null;
+  const hit = providers.find((p) => {
+    try {
+      return new URL(p.baseUrl).origin === parsed.origin;
+    } catch {
+      return false;
+    }
+  });
+  if (!hit) return null;
+  return { providerId: hit.id, channelId: parsed.channelId };
+}
+
 type Query = Record<string, string | number | boolean | undefined | null>;
 
 function buildUrl(baseUrl: string, path: string, query?: Query): string {
@@ -87,6 +129,21 @@ export class Client {
       anonymous: true,
     });
     return { data, status };
+  }
+
+  async deleteSession(id: string) {
+    const { data } = await this.request('DELETE', `/v1/sessions/${id}`);
+    return data;
+  }
+
+  async getDiscovery(opts?: { anonymous?: boolean }) {
+    const { data } = await this.request('GET', '/v1', { anonymous: opts?.anonymous === true });
+    return data;
+  }
+
+  async listAccounts(query?: Query) {
+    const { data } = await this.request('GET', '/v1/accounts', { query });
+    return data;
   }
 
   async createAccount(body: Record<string, unknown>) {

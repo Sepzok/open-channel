@@ -48,7 +48,9 @@ examples/chat/           端口 8781，种子见 SPEC 附录 A
 examples/tasks/          端口 8782
 examples/notes/          端口 8783
 examples/console/        端口 8780，融合台
+examples/native/         独立适配例子，不引用 createApp
 examples/providers.json
+docs/ADAPT.md            已有产品如何暴露 OCP、多提供方客户端如何关联
 e2e/console.mjs
 README.md
 AGENTS.md
@@ -90,9 +92,11 @@ TypeScript：
 - `createShare` `getShare` `revokeShare` `resolveShare`（resolve 不带令牌）
 - `listRevisions` `getRevision` `restoreRevision`
 - `uploadFile` `downloadFile`
+- `getDiscovery` `listAccounts` `deleteSession`（`createSession` / `createAccount` / `createGrant` / `revokeGrant` 已有）
+- `channelResourceUrl`、`parseChannelResourceUrl`、`matchProvider`：拼出并解析 `{origin}/v1/channels/{id}`；`https://example.com/spec` 解析为 `null`
 - 错误类型 `OcpError`，字段 `status`、`code`、`body`
 
-Python 用同名 snake_case。查询参数、路径、请求体与 SPEC 相同，不在 SDK 里改名。
+Python 用同名 snake_case。查询参数、路径、请求体与 SPEC 相同，不在 SDK 里改名。跨提供方关联：对源提供方 `createLink`，`target_url` 为对方 `channelResourceUrl`，不要把对方 id 写成 `target_id`。
 
 ## 融合台
 
@@ -103,11 +107,12 @@ Python 用同名 snake_case。查询参数、路径、请求体与 SPEC 相同�
 - `POST .../entries` 正文是纯文本。type 映射：`dm|group|room` → `message`；`project|task|note` → `comment`。
 - `POST .../shares` 固定 `scope: view`，把提供方返回的 `url` 交给页面。
 - `POST .../revisions/:rev/restore` 仅修订能力存在时页面出现按钮。
-- 文件经融合台反代，页面不直接拿提供方令牌。
+- `POST .../links` 把另一方频道写成 `target_url`（`channelResourceUrl`），不是 `target_id`。详情里为每条链接附 `resolved`（匹配到的提供方与频道 id，或 `null`）。
+- 文件经融合台反代，页面不直接拿提供方令牌。同提供方 `target_id` 与已 `resolved` 的 `target_url` 在页面上可点开对应频道。
 
 界面是浅色操作台，自定义按钮和输入框，不用浏览器默认外观。分区用通栏标题（正文、讨论、链接、修订、分享），不做成卡片堆。没有的能力不渲染该区。
 
-中文标签：私聊、群组、聊天室、项目、任务、笔记、正文、讨论、链接、上级、下级、其它、修订、分享、发送、创建分享、恢复、来源不可用。
+中文标签：私聊、群组、聊天室、项目、任务、笔记、正文、讨论、链接、上级、下级、其它、修订、分享、发送、创建分享、恢复、关联、来源不可用。
 
 ## 种子
 
@@ -138,6 +143,8 @@ Python 用同名 snake_case。查询参数、路径、请求体与 SPEC 相同�
 11. 链接 `type`：对 `ch_proj`，`direction=in&type=parent` 含 `ch_task_copy` 与 `ch_task_img`；`type=blocks` 不含它们。对 `ch_draft`，`direction=out&type=references` 指向术语表。无 `type` 时出边条数与加过滤前一致。
 12. 自定义字段与 SCIM `filter`：schema 允许 `ext` 数字，嵌套对象与非法键名不通过。创建后 GET 仍为 number。`filter=ext.artist eq "林可"` 命中；AND / 同键 OR / 跨键括号 OR / `ne`（缺键不命中）/ `co` / `duration_ms gt` 按 SPEC。非法比较字面量、过长或过深 `filter`、查询参数名 `ext.*` 为 400。PATCH `ext: {}` 后 `eq` 与 `pr` 不命中。SDK 把 `filter` 发到查询串。讨论列表 `filter=type eq "comment"`、链接列表 `filter=title co "所属"` 在服务端过滤。非法种子 `ext` 导入失败且不写 `store.json`。融合台筛选「首页」走提供方 `title co`，可见「首页文案」、不见「发布小组」。打开「首页文案」可见「撰写中」。
 
+13. 跨提供方关联与独立适配：`parseChannelResourceUrl('https://example.com/spec')` 为 `null`；`http://127.0.0.1:9/v1/channels/ch_proj` 解析出 origin 与 `ch_proj`。对笔记 `ch_draft` `POST` `type=references` 且 `target_url` 为任务提供方的频道资源 URL，随后 `GET` 该链接仍是 `target_url`、没有 `target_id`。`ftp://x` 创建链接为 400。融合台打开「接口草案」，点「关联」选「首页文案」，「其它」出现该标题；刷新后再打开仍在；点它进入任务提供方频道且可见「撰写中」。`examples/native` 源码不含 `createApp` 与 `@open-channel/server`；`GET /v1` 的 capabilities 与频道 `ext.native_id` 能读回；对 native 与 notes 都跑同一套发现 + 链接形状黑盒。
+
 SDK 的 `resolveShare` 发送 `Accept: application/json`。
 
 `AGENTS.md` 写明：改协议必须同时改 SPEC、schema、两份 SDK 和测试；不发布到公网；界面中文用行业用语。
@@ -155,6 +162,9 @@ SDK 的 `resolveShare` 发送 `Accept: application/json`。
 - 融合台筛选只在已拉回的列表上再筛，不把条件交给提供方 `filter`
 - SDK 方法不发 HTTP
 - 客户端在 API 请求体里指定 `author` 或 `id` 并被接受
+- 跨提供方关联只改页面文案、不 `POST` 链接资源
+- 把对方频道 id 当作本提供方 `target_id`
+- 独立适配例子引用 `@open-channel/server` / `createApp`
 
 ## 实现顺序
 

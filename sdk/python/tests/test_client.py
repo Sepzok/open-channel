@@ -9,7 +9,7 @@ from urllib import error, request
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 sys.path.insert(0, os.path.join(ROOT, "sdk", "python"))
 
-from openchannel import Client, OcpError  # noqa: E402
+from openchannel import Client, OcpError, channel_resource_url, parse_channel_resource_url  # noqa: E402
 
 
 def wait_for_port(proc: subprocess.Popen, timeout: float = 30.0) -> str:
@@ -115,6 +115,19 @@ class SdkPythonTest(unittest.TestCase):
         as_lin = Client(self.base_url, session["token"])
         listed = as_lin.list_channels()
         self.assertTrue(any(c["title"] == "接口草案" for c in listed["data"]))
+        disco = client.get_discovery(anonymous=True)
+        self.assertEqual(disco["protocol"], "ocp")
+        other = channel_resource_url("http://127.0.0.1:8782", "ch_proj")
+        status, link = client.create_link(
+            "ch_draft",
+            {"type": "references", "target_url": other, "title": "首页文案"},
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(link.get("target_url"), other)
+        self.assertIsNone(link.get("target_id"))
+        parsed = parse_channel_resource_url(link["target_url"])
+        self.assertEqual(parsed["channel_id"], "ch_proj")
+        self.assertIsNone(parse_channel_resource_url("https://example.com/spec"))
 
 
 if __name__ == "__main__":

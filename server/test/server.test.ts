@@ -59,6 +59,33 @@ describe('chat provider mechanisms', () => {
   });
 });
 
+describe('link target_url', () => {
+  let baseUrl: string;
+  let close: () => Promise<void>;
+
+  before(async () => {
+    const s = await startServer({
+      providerId: 'notes',
+      capabilities: NOTES_CAPS,
+      seed: loadSeed('notes'),
+    });
+    baseUrl = s.baseUrl;
+    close = s.close;
+  });
+
+  after(async () => {
+    await close();
+  });
+
+  it('rejects non-http target_url', async () => {
+    const res = await httpJson(baseUrl, 'POST', '/v1/channels/ch_draft/links', {
+      body: { type: 'references', target_url: 'ftp://x', title: '坏' },
+    });
+    assert.equal(res.status, 400);
+    assert.equal((res.body as { code: string }).code, 'validation_error');
+  });
+});
+
 describe('notes provider mechanisms', () => {
   let baseUrl: string;
   let close: () => Promise<void>;
